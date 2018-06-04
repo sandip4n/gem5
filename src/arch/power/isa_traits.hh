@@ -39,12 +39,12 @@
 #include "base/types.hh"
 #include "cpu/static_inst_fwd.hh"
 
-namespace BigEndianGuest {}
+namespace LittleEndianGuest {}
 
 namespace PowerISA
 {
 
-using namespace BigEndianGuest;
+using namespace LittleEndianGuest;
 
 StaticInstPtr decodeInst(ExtMachInst);
 

@@ -115,16 +115,17 @@ ElfObject::tryFile(const std::string &fname, size_t len, uint8_t *data,
         arch = Riscv;
     } else if (ehdr.e_machine == EM_PPC &&
                ehdr.e_ident[EI_CLASS] == ELFCLASS32) {
+        fatal("The binary you're trying to load is compiled for 32-bit "
+              "Power.\ngem5 only supports 64-bit Power. Please "
+              "recompile your binary.\n");
+    } else if (ehdr.e_machine == EM_PPC64 &&
+               ehdr.e_ident[EI_CLASS] == ELFCLASS64) {
         arch = Power;
-        if (ehdr.e_ident[EI_DATA] != ELFDATA2MSB) {
+        if (ehdr.e_ident[EI_DATA] != ELFDATA2LSB) {
             fatal("The binary you're trying to load is compiled for "
-                  "little endian Power.\ngem5 only supports big "
+                  "big endian Power.\ngem5 only supports little "
                   "endian Power. Please recompile your binary.\n");
         }
-    } else if (ehdr.e_machine == EM_PPC64) {
-        fatal("The binary you're trying to load is compiled for 64-bit "
-              "Power. M5\n only supports 32-bit Power. Please "
-              "recompile your binary.\n");
     } else if (ehdr.e_ident[EI_CLASS] == ELFCLASS64) {
         // Since we don't know how to check for alpha right now, we'll
         // just assume if it wasn't something else and it's 64 bit, that's
