@@ -115,7 +115,7 @@ output exec {{
                                Trace::InstRecord *traceData) const
     {
         panic("attempt to execute unimplemented instruction '%s' "
-              "(inst 0x%08x, opcode 0x%x, binary:%s)", mnemonic, machInst, OPCODE,
+              "(inst 0x%08x, opcode 0x%x, binary:%s)", mnemonic, machInst, PO,
               inst2string(machInst));
         return std::make_shared<UnimplementedOpcodeFault>();
     }
@@ -143,4 +143,3 @@ def format WarnUnimpl() {{
     iop = InstObjParams(name, 'WarnUnimplemented')
     decode_block = BasicDecodeWithMnemonic.subst(iop)
 }};
-
