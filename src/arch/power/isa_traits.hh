@@ -58,7 +58,7 @@ const Addr NPtePageShift = PageShift - PteShift;
 const Addr NPtePage = ULL(1) << NPtePageShift;
 const Addr PteMask = NPtePage - 1;
 
-const int MachineBytes = 4;
+const int MachineBytes = 8;
 
 // Memory accesses can be unaligned
 const bool HasUnalignedMemAcc = true;
