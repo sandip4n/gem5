@@ -252,18 +252,25 @@ decode PO default Unknown::unknown() {
         }
     }
 
-    format IntImmOp {
-        10: cmpli({{
-            Xer xer = XER;
-            uint32_t cr = makeCRField(Ra, (uint32_t)uimm, xer.so);
-            CR = insertCRField(CR, BF, cr);
-            }});
+    format IntImmCompOp {
         11: cmpi({{
-            Xer xer = XER;
-            uint32_t cr = makeCRField(Ra_sw, (int32_t)imm, xer.so);
-            CR = insertCRField(CR, BF, cr);
-            }});
+            if (length) {
+                cr = makeCRField(Ra_sd, simm, xer.so);
+            } else {
+                cr = makeCRField((int32_t)Ra_sd, simm, xer.so);
+            }
+        }});
     }
+
+    format IntImmCompLogicOp {
+        10: cmpli({{
+            if (length) {
+                cr = makeCRField(Ra, uimm, xer.so);
+            } else {
+                cr = makeCRField((uint32_t)Ra, uimm, xer.so);
+            }
+        }});
+     }
 
     format IntImmLogicOp {
         24: ori({{ Ra = Rs | uimm; }});
@@ -453,17 +460,21 @@ decode PO default Unknown::unknown() {
             }});
         }
 
-        format IntOp {
+        format IntCompOp {
             0: cmp({{
-                Xer xer = XER;
-                uint32_t cr = makeCRField(Ra_sw, Rb_sw, xer.so);
-                CR = insertCRField(CR, BF, cr);
+                if (length) {
+                    cr = makeCRField(Ra_sd, Rb_sd, xer.so);
+                } else {
+                    cr = makeCRField((int32_t)Ra_sd, (int32_t)Rb_sd, xer.so);
+                }
             }});
 
             32: cmpl({{
-                Xer xer = XER;
-                uint32_t cr = makeCRField(Ra, Rb, xer.so);
-                CR = insertCRField(CR, BF, cr);
+                if (length) {
+                    cr = makeCRField(Ra, Rb, xer.so);
+                } else {
+                    cr = makeCRField((uint32_t)Ra, (uint32_t)Rb, xer.so);
+                }
             }});
         }
 

@@ -48,7 +48,7 @@ IntOp::generateDisassembly(Addr pc, const SymbolTable *symtab) const
     if (!myMnemonic.compare("or") && _srcRegIdx[0] == _srcRegIdx[1]) {
         myMnemonic = "mr";
         printSecondSrc = false;
-    } else if (!myMnemonic.compare("mtlr") || !myMnemonic.compare("cmpi")) {
+    } else if (!myMnemonic.compare("mtlr")) {
         printDest = false;
     } else if (!myMnemonic.compare("mflr")) {
         printSrcs = false;
@@ -272,6 +272,183 @@ IntDispArithOp::generateDisassembly(Addr pc, const SymbolTable *symtab) const
             ss << ", " << disp;
         }
     }
+
+    return ss.str();
+}
+
+
+string
+IntCompOp::generateDisassembly(Addr pc, const SymbolTable *symtab) const
+{
+    stringstream ss;
+    bool printFieldPrefix = false;
+    bool printLength = true;
+
+    // Generate the correct mnemonic
+    string myMnemonic(mnemonic);
+
+    // Special cases
+    if (!myMnemonic.compare("cmp")) {
+        if (length) {
+            myMnemonic = "cmpd";
+        } else {
+            myMnemonic = "cmpw";
+        }
+        printFieldPrefix = true;
+        printLength = false;
+    } else if (!myMnemonic.compare("cmpl")) {
+        if (length) {
+            myMnemonic = "cmpld";
+        } else {
+            myMnemonic = "cmplw";
+        }
+        printFieldPrefix = true;
+        printLength = false;
+    }
+
+    ccprintf(ss, "%-10s ", myMnemonic);
+
+    // Print the first destination only
+    if (printFieldPrefix) {
+        if (field > 0) {
+            ss << "cr" << field;
+        }
+    } else {
+        ss << field;
+    }
+
+    // Print the length
+    if (printLength) {
+        if (!printFieldPrefix || field > 0) {
+            ss << ", ";
+        }
+        ss << length;
+    }
+
+    // Print the first source register
+    if (_numSrcRegs > 0) {
+        if (!printFieldPrefix || field > 0 || printLength) {
+            ss << ", ";
+        }
+        printReg(ss, _srcRegIdx[0]);
+
+        // Print the second source register
+        if (_numSrcRegs > 1) {
+            ss << ", ";
+            printReg(ss, _srcRegIdx[1]);
+        }
+    }
+
+    return ss.str();
+}
+
+
+string
+IntImmCompOp::generateDisassembly(Addr pc, const SymbolTable *symtab) const
+{
+    stringstream ss;
+    bool printFieldPrefix = false;
+    bool printLength = true;
+
+    // Generate the correct mnemonic
+    string myMnemonic(mnemonic);
+
+    // Special cases
+    if (!myMnemonic.compare("cmpi")) {
+        if (length) {
+            myMnemonic = "cmpdi";
+        } else {
+            myMnemonic = "cmpwi";
+        }
+        printFieldPrefix = true;
+        printLength = false;
+    }
+
+    ccprintf(ss, "%-10s ", myMnemonic);
+
+    // Print the first destination only
+    if (printFieldPrefix) {
+        if (field > 0) {
+            ss << "cr" << field;
+        }
+    } else {
+        ss << field;
+    }
+
+    // Print the length
+    if (printLength) {
+        if (!printFieldPrefix || field > 0) {
+            ss << ", ";
+        }
+        ss << length;
+    }
+
+    // Print the first source register
+    if (_numSrcRegs > 0) {
+        if (!printFieldPrefix || field > 0 || printLength) {
+            ss << ", ";
+        }
+        printReg(ss, _srcRegIdx[0]);
+    }
+
+    // Print the immediate value
+    ss << ", " << simm;
+
+    return ss.str();
+}
+
+
+string
+IntImmCompLogicOp::generateDisassembly(Addr pc,
+                                       const SymbolTable *symtab) const
+{
+    stringstream ss;
+    bool printFieldPrefix = false;
+    bool printLength = true;
+
+    // Generate the correct mnemonic
+    string myMnemonic(mnemonic);
+
+    // Special cases
+    if (!myMnemonic.compare("cmpli")) {
+        if (length) {
+            myMnemonic = "cmpldi";
+        } else {
+            myMnemonic = "cmplwi";
+        }
+        printFieldPrefix = true;
+        printLength = false;
+    }
+
+    ccprintf(ss, "%-10s ", myMnemonic);
+
+    // Print the first destination only
+    if (printFieldPrefix) {
+        if (field > 0) {
+            ss << "cr" << field;
+        }
+    } else {
+        ss << field;
+    }
+
+    // Print the mode
+    if (printLength) {
+        if (!printFieldPrefix || field > 0) {
+            ss << ", ";
+        }
+        ss << length;
+    }
+
+    // Print the first source register
+    if (_numSrcRegs > 0) {
+        if (!printFieldPrefix || field > 0 || printLength) {
+            ss << ", ";
+        }
+        printReg(ss, _srcRegIdx[0]);
+    }
+
+    // Print the immediate value
+    ss << ", " << uimm;
 
     return ss.str();
 }
