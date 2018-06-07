@@ -707,6 +707,7 @@ decode PO default Unknown::unknown() {
                 0x100: mflr({{ Rt = LR; }});
                 0x120: mfctr({{ Rt = CTR; }});
                 0x32f: mftar({{ Rt = TAR; }});
+                0x188: mftb({{ Rt = 0; }}); // FIXME
             }
             467: decode SPR {
                 0x20: mtxer({{ XER = Rs; }});

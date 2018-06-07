@@ -57,7 +57,7 @@ unameFunc(SyscallDesc *desc, int callnum, Process *process,
 
     strcpy(name->sysname, "Linux");
     strcpy(name->nodename, "sim.gem5.org");
-    strcpy(name->release, "3.0.0");
+    strcpy(name->release, "4.0.0");
     strcpy(name->version, "#1 Mon Aug 18 11:32:15 EDT 2003");
     strcpy(name->machine, "power");
 
@@ -151,7 +151,7 @@ SyscallDesc PowerLinuxProcess::syscallDescs[] = {
     /* 82 */ SyscallDesc("reserved#82", unimplementedFunc),
     /* 83 */ SyscallDesc("symlink", unimplementedFunc),
     /* 84 */ SyscallDesc("unused#84", unimplementedFunc),
-    /* 85 */ SyscallDesc("readlink", unimplementedFunc),
+    /* 85 */ SyscallDesc("readlink", readlinkFunc),
     /* 86 */ SyscallDesc("uselib", unimplementedFunc),
     /* 87 */ SyscallDesc("swapon", gethostnameFunc),
     /* 88 */ SyscallDesc("reboot", unimplementedFunc),
