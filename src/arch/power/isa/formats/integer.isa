@@ -73,24 +73,36 @@ setXERCode = 'XER = xer;'
 
 computeCR0Code = '''
     Cr cr = CR;
-    cr.cr0 = makeCRField((int32_t)%(result)s, (int32_t)0, xer.so);
+    cr.cr0 = makeCRField((int64_t)%(result)s, (int64_t)0, xer.so);
     CR = cr;
 '''
 
 computeCACode = '''
-    if (findCarry(32, %(result)s, %(inputa)s, %(inputb)s)) {
+    if (findCarry(64, %(result)s, %(inputa)s, %(inputb)s)) {
         xer.ca = 1;
     } else {
         xer.ca = 0;
     }
+
+    if (findCarry(32, %(result)s, %(inputa)s, %(inputb)s)) {
+        xer.ca32 = 1;
+    } else {
+        xer.ca32 = 0;
+    }
 '''
 
 computeOVCode = '''
-    if (findOverflow(32, %(result)s, %(inputa)s, %(inputb)s)) {
+    if (findOverflow(64, %(result)s, %(inputa)s, %(inputb)s)) {
         xer.ov = 1;
         xer.so = 1;
     } else {
         xer.ov = 0;
+    }
+
+    if (findOverflow(32, %(result)s, %(inputa)s, %(inputb)s)) {
+        xer.ov32 = 1;
+    } else {
+        xer.ov32 = 0;
     }
 '''
 
@@ -132,21 +144,23 @@ def format IntImmOp(code, inst_flags = []) {{
 // value in source register Ra, hence the use of src to hold the actual
 // value. The control flags include the use of code to compute the
 // carry bit or the CR0 code.
-def format IntImmArithOp(code, ctrl_flags = [], inst_flags = []) {{
+def format IntImmArithOp(code, computeCA = 0, computeCR0 = 0,
+                         inst_flags = []) {{
 
-    # Set up the dictionary and deal with control flags
-    dict = {'result':'Rt', 'inputa':'src', 'inputb':'imm'}
-    if ctrl_flags:
+    # Set up the dictionary
+    dict = {'result':'Rt', 'inputa':'src', 'inputb':'simm'}
+
+    # Deal with computing CR0 and carry
+    if computeCA or computeCR0:
         code += readXERCode
-        for val in ctrl_flags:
-            if val == 'computeCA':
-                code += computeCACode % dict + setXERCode
-            elif val == 'computeCR0':
-                code += computeCR0Code % dict
+    if computeCA:
+        code += computeCACode % dict + setXERCode
+    if computeCR0:
+        code += computeCR0Code % dict
 
     # Generate the class
     (header_output, decoder_output, decode_block, exec_output) = \
-        GenAluOp(name, Name, 'IntImmOp', code, inst_flags, BasicDecode,
+        GenAluOp(name, Name, 'IntImmArithOp', code, inst_flags, BasicDecode,
                  BasicConstructor)
 }};
 
@@ -159,12 +173,12 @@ def format IntImmArithCheckRaOp(code, code_ra0, inst_flags = []) {{
 
     # First the version where Ra is non-zero
     (header_output, decoder_output, decode_block, exec_output) = \
-        GenAluOp(name, Name, 'IntImmOp', code, inst_flags,
+        GenAluOp(name, Name, 'IntImmArithOp', code, inst_flags,
                  CheckRaDecode, BasicConstructor)
 
     # Now another version where Ra == 0
     (header_output_ra0, decoder_output_ra0, _, exec_output_ra0) = \
-        GenAluOp(name, Name + 'RaZero', 'IntImmOp', code_ra0, inst_flags,
+        GenAluOp(name, Name + 'RaZero', 'IntImmArithOp', code_ra0, inst_flags,
                  CheckRaDecode, BasicConstructor)
 
     # Finally, add to the other outputs
@@ -260,9 +274,9 @@ def format IntSumOp(src1, src2, ca = {{ 0 }}, computeCA = 0,
     dict = {'result':'Rt', 'inputa':'src1', 'inputb':'src2'}
 
     # Add code to set up variables and do the sum
-    code  = 'uint32_t src1 = ' + src1 + ';\n'
-    code += 'uint32_t src2 = ' + src2 + ';\n'
-    code += 'uint32_t ca = ' + ca + ';\n'
+    code  = 'uint64_t src1 = ' + src1 + ';\n'
+    code += 'uint64_t src2 = ' + src2 + ';\n'
+    code += 'uint64_t ca = ' + ca + ';\n'
     code += 'Rt = src1 + src2 + ca;\n'
 
     # Add code for calculating the carry, if needed
@@ -280,16 +294,16 @@ def format IntSumOp(src1, src2, ca = {{ 0 }}, computeCA = 0,
 
     # Generate the classes
     (header_output, decoder_output, decode_block, exec_output) = \
-        GenAluOp(name, Name, 'IntOp', code, inst_flags,
+        GenAluOp(name, Name, 'IntArithOp', code, inst_flags,
                  CheckRcOeDecode, BasicConstructor)
     (header_output_rc1, decoder_output_rc1, _, exec_output_rc1) = \
-        GenAluOp(name, Name + 'RcSet', 'IntOp', code_rc1, inst_flags,
+        GenAluOp(name, Name + 'RcSet', 'IntArithOp', code_rc1, inst_flags,
                  CheckRcOeDecode, IntRcConstructor)
     (header_output_oe1, decoder_output_oe1, _, exec_output_oe1) = \
-        GenAluOp(name, Name + 'OeSet', 'IntOp', code_oe1, inst_flags,
+        GenAluOp(name, Name + 'OeSet', 'IntArithOp', code_oe1, inst_flags,
                  CheckRcOeDecode, IntOeConstructor)
     (header_output_rc1_oe1, decoder_output_rc1_oe1, _, exec_output_rc1_oe1) = \
-        GenAluOp(name, Name + 'RcSetOeSet', 'IntOp', code_rc1_oe1,
+        GenAluOp(name, Name + 'RcSetOeSet', 'IntArithOp', code_rc1_oe1,
                  inst_flags, CheckRcOeDecode, IntRcOeConstructor)
 
     # Finally, add to the other outputs
