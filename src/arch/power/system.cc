@@ -68,4 +68,8 @@ PowerSystem::initState()
     System::initState();
     ThreadContext *tc = threadContexts[0];
     tc->pcState(tc->getSystemPtr()->kernelEntry);
+    //Sixty Four, little endian,Hypervisor bits are enabled.
+    // IR and DR bits are disabled.
+    Msr msr = 0x9000000000000001;
+    tc->setIntReg(INTREG_MSR , msr);
 }

@@ -37,11 +37,22 @@ namespace PowerISA
 {
 
 enum MiscRegIndex {
-    NUM_MISCREGS = 0
+    MISCREG_CR,
+    MISCREG_XER,
+    MISCREG_FPSR,
+    MISCREG_MSR,
+    MISCREG_PTCR,
+    NUM_MISCREGS
 };
 
 const char * const miscRegName[NUM_MISCREGS] = {
 };
+
+static inline bool
+isValidMiscReg(int index)
+{
+    return (index >= MISCREG_CR && index < NUM_MISCREGS);
+}
 
 BitUnion32(Cr)
     SubBitUnion(cr0, 31, 28)
@@ -96,6 +107,32 @@ BitUnion32(Fpscr)
     Bitfield<3> ni;
     Bitfield<2,1> rn;
 EndBitUnion(Fpscr)
+
+BitUnion64(Msr)
+    Bitfield<63> sf;
+    Bitfield<60> hv;
+    Bitfield<32> tm;
+    Bitfield<34,33> ts;
+    Bitfield<25> vec;
+    Bitfield<23> vsx;
+    Bitfield<15> ee;
+    Bitfield<14> pr;
+    Bitfield<13> fp;
+    Bitfield<12> me;
+    Bitfield<11> fe0;
+    Bitfield<10,9> te;
+    Bitfield<8> fe1;
+    Bitfield<5> ir;
+    Bitfield<4> dr;
+    Bitfield<2> pmm;
+    Bitfield<1> ri;
+    Bitfield<0> le;
+EndBitUnion(Msr)
+
+BitUnion64(Ptcr)
+    Bitfield<59,12> patb;
+    Bitfield<4,0> pats;
+EndBitUnion(Ptcr)
 
 } // namespace PowerISA
 
