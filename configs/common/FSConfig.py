@@ -57,6 +57,7 @@ os_types = { 'alpha' : [ 'linux' ],
                          'android-jellybean',
                          'android-kitkat',
                          'android-nougat', ],
+             'power' : [ 'linux' ],
            }
 
 class CowIdeDisk(IdeDisk):
@@ -680,6 +681,31 @@ def makeLinuxX86System(mem_mode, numCPUs=1, mdesc=None, Ruby=False,
     self.boot_osflags = fillInCmdline(mdesc, cmdline)
     self.kernel = binary('x86_64-vmlinux-2.6.22.9')
     return self
+
+def makeLinuxPowerSystem(mem_mode, numCPUs=1, mdesc=None, cmdline=None):
+    self = LinuxPowerSystem()
+    if not mdesc:
+        mdesc = SysConfig()
+    self.readfile = mdesc.script()
+    self.iobus = IOXBar()
+    self.membus = MemBus()
+    self.bridge = Bridge(delay='50ns')
+    self.mem_mode = mem_mode
+    self.mem_ranges = [AddrRange('3GB')]
+    self.bridge.master = self.iobus.slave
+    self.bridge.slave = self.membus.master
+    self.bridge.ranges = \
+        [
+        AddrRange(0xC0000000, 0xFFFF0000),
+        ]
+    self.system_port = self.membus.slave
+    self.intrctrl = IntrControl()
+    if not cmdline:
+        cmdline = 'earlyprintk=ttyS0 console=ttyS0 lpj=7999923 root=/dev/hda1'
+    self.boot_osflags = fillInCmdline(mdesc, cmdline)
+    self.kernel = binary('vmlinux')
+    self.dtb_filename = binary('gem5-power9-fs.dtb')
+return self
 
 
 def makeDualRoot(full_system, testSystem, driveSystem, dumpfile):

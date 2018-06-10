@@ -1,8 +1,15 @@
 /*
- * Copyright (c) 2003-2005 The Regents of The University of Michigan
- * Copyright (c) 2007-2008 The Florida State University
- * Copyright (c) 2009 The University of Edinburgh
+ * Copyright (c) 2007-2008 The Hewlett-Packard Development Company
  * All rights reserved.
+ *
+ * The license below extends only to copyright in the software and shall
+ * not be construed as granting a license to any other intellectual
+ * property including but not limited to intellectual property relating
+ * to a hardware implementation of the functionality of the software
+ * licensed hereunder.  You may use the software subject to the license
+ * terms below provided that you ensure that this notice is replicated
+ * unmodified and in its entirety in all distributions of the software,
+ * modified or unmodified, in source code or in binary form.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -27,56 +34,29 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- * Authors: Korey Sewell
- *          Stephen Hines
- *          Timothy M. Jones
+ * Authors: Gabe Black
  */
 
-#include "arch/power/utility.hh"
+#ifndef __ARCH_LINUX_POWER_SYSTEM_HH__
+#define __ARCH_LINUX_POWER_SYSTEM_HH__
 
-#include "base/logging.hh"
+#include <string>
+#include <vector>
 
-namespace PowerISA {
+#include "arch/power/system.hh"
+#include "params/LinuxPowerSystem.hh"
 
-void
-copyRegs(ThreadContext *src, ThreadContext *dest)
+class LinuxPowerSystem : public PowerSystem
 {
-    // First loop through the integer registers.
-    for (int i = 0; i < NumIntRegs; ++i)
-        dest->setIntReg(i, src->readIntReg(i));
+  protected:
+    std::string commandLine;
 
-    // Then loop through the floating point registers.
-    for (int i = 0; i < NumFloatRegs; ++i)
-        dest->setFloatRegBits(i, src->readFloatRegBits(i));
+  public:
+    typedef LinuxPowerSystemParams Params;
+    LinuxPowerSystem(Params *p);
+    ~LinuxPowerSystem();
+    void initState();
+};
 
-    // Would need to add condition-code regs if implemented
-    assert(NumCCRegs == 0);
+#endif
 
-    // Copy misc. registers
-    copyMiscRegs(src, dest);
-
-    // Lastly copy PC/NPC
-    dest->pcState(src->pcState());
-}
-
-uint64_t
-getArgument(ThreadContext *tc, int &number, uint16_t size, bool fp)
-{
-    panic("getArgument not implemented for POWER.\n");
-    return 0;
-}
-
-void
-skipFunction(ThreadContext *tc)
-{
-    panic("Not Implemented for POWER");
-}
-
-void
-initCPU(ThreadContext *tc, int cpuId)
-{
-
-}
-
-
-} // namespace PowerISA
