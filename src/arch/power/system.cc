@@ -71,5 +71,11 @@ PowerSystem::initState()
     //Sixty Four, little endian,Hypervisor bits are enabled.
     // IR and DR bits are disabled.
     Msr msr = 0x9000000000000001;
+    tc->setIntReg(INTREG_DEC , 0xffffffffffffffff);
+    // This PVR is specific to power9
+    tc->setIntReg(INTREG_PVR , 0x004e1100);
     tc->setIntReg(INTREG_MSR , msr);
+    //ArgumentReg0 is initialized with 0xc00000 because in linux/system.cc
+    //dtb is loaded at 0xc00000
+    tc->setIntReg(ArgumentReg0, 0x1800000);
 }

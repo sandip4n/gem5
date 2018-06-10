@@ -33,17 +33,18 @@
 #ifndef __ARCH_POWER_FAULTS_HH__
 #define __ARCH_POWER_FAULTS_HH__
 
+#include "cpu/thread_context.hh"
 #include "sim/faults.hh"
 
 namespace PowerISA
 {
 
-class PowerFault : public FaultBase
+class PowerFaultBase : public FaultBase
 {
   protected:
     FaultName _name;
 
-    PowerFault(FaultName name)
+    PowerFaultBase(FaultName name)
         : _name(name)
     {
     }
@@ -56,32 +57,63 @@ class PowerFault : public FaultBase
 };
 
 
-class UnimplementedOpcodeFault : public PowerFault
+class UnimplementedOpcodeFault : public PowerFaultBase
 {
   public:
     UnimplementedOpcodeFault()
-        : PowerFault("Unimplemented Opcode")
+        : PowerFaultBase("Unimplemented Opcode")
     {
     }
 };
 
 
-class MachineCheckFault : public PowerFault
+class MachineCheckFault : public PowerFaultBase
 {
   public:
     MachineCheckFault()
-        : PowerFault("Machine Check")
+        : PowerFaultBase("Machine Check")
     {
     }
 };
 
 
-class AlignmentFault : public PowerFault
+class AlignmentFault : public PowerFaultBase
 {
   public:
     AlignmentFault()
-        : PowerFault("Alignment")
+        : PowerFaultBase("Alignment")
     {
+    }
+};
+
+
+class PowerInterrupt : public PowerFaultBase
+{
+  public:
+    PowerInterrupt()
+        : PowerFaultBase("Interrupt")
+    {
+    }
+};
+
+
+class DecrementerInterrupt : public PowerInterrupt
+{
+  public:
+    DecrementerInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                        StaticInst::nullStaticInstPtr)
+    {
+      Msr msr = tc->readIntReg(MISCREG_MSR);
+      // Refer Power ISA Manual v3.0B Book-III, section 6.5.11
+      tc->setIntReg(INTREG_SRR0 , tc->instAddr());
+      uint64_t srr1 = msr & 0xffffffff78fc0fff;
+      tc->setIntReg(INTREG_SRR1 , srr1);
+      msr = msr & 0xffffffffffff76cd;
+      tc->setIntReg(INTREG_MSR , msr);
+      tc->pcState(0x900);
     }
 };
 
