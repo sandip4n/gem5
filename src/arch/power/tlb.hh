@@ -96,6 +96,8 @@ struct TlbEntry
     }
 };
 
+class RadixWalk;
+
 class TLB : public BaseTLB
 {
   protected:
@@ -129,6 +131,8 @@ class TLB : public BaseTLB
     Stats::Formula accesses;
 
   public:
+    friend class RadixWalk;
+    RadixWalk *rwalk;
     typedef PowerTLBParams Params;
     TLB(const Params *p);
     virtual ~TLB();
@@ -150,6 +154,7 @@ class TLB : public BaseTLB
     void insert(Addr vaddr, PowerISA::PTE &pte);
     void insertAt(PowerISA::PTE &pte, unsigned Index, int _smallPages);
     void flushAll() override;
+    RadixWalk *getWalker();
 
     void
     demapPage(Addr vaddr, uint64_t asn) override
@@ -175,6 +180,7 @@ class TLB : public BaseTLB
     void unserialize(CheckpointIn &cp) override;
 
     void regStats() override;
+    BaseMasterPort *getMasterPort() override;
 };
 
 } // namespace PowerISA

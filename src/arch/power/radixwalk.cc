@@ -1,0 +1,438 @@
+#include "arch/power/radixwalk.hh"
+
+#include <memory>
+
+#include "arch/power/miscregs.hh"
+#include "arch/power/tlb.hh"
+#include "base/bitfield.hh"
+#include "cpu/base.hh"
+#include "cpu/thread_context.hh"
+#include "debug/RadixWalk.hh"
+#include "mem/packet_access.hh"
+#include "mem/request.hh"
+
+#define PRTB_SHIFT     12
+#define PRTB_MASK      0x0ffffffffffff
+#define PRTB_ALIGN     4
+#define TABLE_BASE_ALIGN     PRTB_SHIFT
+
+#define RPDB_SHIFT     8
+#define RPDB_MASK      0x0fffffffffffff
+
+#define RPDS_SHIFT     0
+#define RPDS_MASK      0x1f
+
+#define NLB_SHIFT      RPDB_SHIFT
+#define NLB_MASK       RPDB_MASK
+
+#define NLS_SHIFT      RPDS_SHIFT
+#define NLS_MASK       RPDS_MASK
+
+#define DIR_BASE_ALIGN  RPDB_SHIFT
+
+#define RTS1_SHIFT     61
+#define RTS1_MASK      0x3
+#define RTS2_BITS      3
+#define RTS2_SHIFT     5
+#define RTS2_MASK      ((1 << RTS2_BITS) - 1)
+
+#define RPN_MASK      0x01fffffffffff000
+
+#define QUADRANT_MASK 0xc000000000000000
+#define QUADRANT00   0x0000000000000000
+#define QUADRANT01   0x4000000000000000
+#define QUADRANT10   0x8000000000000000
+#define QUADRANT11   0xc000000000000000
+
+#define extract(x, shift, mask)   ((x >> shift) & mask)
+#define align(x, bits) (x << bits)
+
+#define getRTS(x)      ((extract(x, RTS1_SHIFT, RTS1_MASK) << RTS2_BITS) | \
+                        (extract(x, RTS2_SHIFT, RTS2_MASK)))
+
+namespace PowerISA {
+
+uint64_t
+RadixWalk::readPhysMem(uint64_t addr, uint64_t dataSize)
+{
+    uint64_t ret;
+    Request::Flags flags = Request::PHYSICAL;
+
+    RequestPtr request = new Request(addr, dataSize, flags, this->masterId);
+    Packet *read = new Packet(request, MemCmd::ReadReq);
+    read->allocate();
+    this->port.sendAtomic(read);
+    ret = read->get<uint64_t>();
+
+    delete read->req;
+
+    return ret;
+}
+
+uint32_t geteffLPID(ThreadContext *tc)
+{
+    Msr msr = tc->readIntReg(INTREG_MSR);
+
+    if (msr.hv)
+        return 0;
+
+    return tc->readIntReg(INTREG_LPIDR);
+}
+
+uint32_t geteffPID(ThreadContext *tc, Addr vaddr)
+{
+    Msr msr = tc->readIntReg(INTREG_MSR);
+    uint64_t quadrant = vaddr & QUADRANT_MASK;
+
+    if (msr.hv && !msr.pr) { //Hypervisor Kernel
+        switch(quadrant) {
+        case QUADRANT11:
+            return 0;
+        case QUADRANT10:
+            return 0;
+        default:
+            return tc->readIntReg(INTREG_PIDR);
+        }
+    }
+
+    //Hypervisor Userspace or Guest
+    switch(quadrant) {
+    case QUADRANT11:
+        return 0;
+    case QUADRANT00:
+       return tc->readIntReg(INTREG_PIDR);
+    default:
+       if (msr.hv)
+           panic("Errorenous hypervisor Userspace Quadrant : %lx\n", quadrant);
+       else
+           panic("Errorenous Guest Quadrant : %lx\n", quadrant);
+    }
+
+    return tc->readIntReg(INTREG_PIDR);
+}
+
+Fault
+RadixWalk::start(ThreadContext * tc, RequestPtr req, BaseTLB::Mode mode)
+{
+    Addr vaddr = req->getVaddr();
+    // prte0 ---> Process Table Entry
+    DPRINTF(RadixWalk,"Translating vaddr = 0x%lx\n", vaddr);
+    uint64_t prte0 = getRPDEntry(tc, vaddr);
+    // rpdb, rpds --->  Root Page Directory Base and Size
+    uint64_t rpdb = extract(prte0, RPDB_SHIFT, RPDB_MASK);
+    uint64_t rpds = extract(prte0, RPDS_SHIFT, RPDS_MASK);
+    // rts = Radix Tree Size - 31.
+    uint64_t rts = getRTS(prte0);
+
+    uint64_t nextLevelBase = align(rpdb, DIR_BASE_ALIGN);
+    uint64_t nextLevelSize = rpds;
+
+    // usefulBits ---> radix tree size + 31
+    // These are the useful lower bits of vaddr used for
+    // address translation.
+    uint64_t usefulBits = rts + 31; //Typically is 52.
+
+    DPRINTF(RadixWalk,"RPDB: 0x%lx\n RPDS: 0x%lx\n usefulBits: %ld\n\n"
+            ,rpdb,rpds,usefulBits);
+
+    //TODO:
+    //==========
+    // Fault should be generated as a return value of walkTree. Perhaps
+    // we can pass paddr as a pointer in which the physical address can
+    // be returned.
+    // As of now we assume that there are no faults.
+    Addr paddr = this->walkTree(vaddr, nextLevelBase,
+                                nextLevelSize, usefulBits);
+    req->setPaddr(paddr);
+    DPRINTF(RadixWalk,"Radix Translated %#x -> %#x\n",vaddr,paddr);
+    return NoFault;
+}
+
+uint64_t
+RadixWalk::getRPDEntry(ThreadContext * tc, Addr vaddr)
+{
+    Ptcr ptcr = tc->readIntReg(INTREG_PTCR);
+    uint32_t efflpid = geteffLPID(tc);
+
+    DPRINTF(RadixWalk,"PTCR:%lx\n",(uint64_t)ptcr);
+    DPRINTF(RadixWalk,"effLPID: %x\n",efflpid);
+
+    //Accessing 2nd double word of partition table (pate1)
+    //Ref: Power ISA Manual v3.0B, Book-III, section 5.7.6.1
+    //           PTCR Layout
+    // ====================================================
+    // -----------------------------------------------
+    // | /// |     PATB                | /// | PATS  |
+    // -----------------------------------------------
+    // 0     4                       51 52 58 59    63
+    // PATB[4:51] holds the base address of the Partition Table,
+    // right shifted by 12 bits.
+    // This is because the address of the Partition base is
+    // 4k aligned. Hence, the lower 12bits, which are always
+    // 0 are ommitted from the PTCR.
+    //
+    // Thus, The Partition Table Base is obtained by (PATB << 12)
+    //
+    // PATS represents the partition table size right-shifted by 12 bits.
+    // The minimal size of the partition table is 4k.
+    // Thus partition table size = (1 << PATS + 12).
+    //
+    //        Partition Table
+    //  ====================================================
+    //  0    PATE0            63  PATE1             127
+    //  |----------------------|----------------------|
+    //  |                      |                      |
+    //  |----------------------|----------------------|
+    //  |                      |                      |
+    //  |----------------------|----------------------|
+    //  |                      |                      | <-- effLPID
+    //  |----------------------|----------------------|
+    //           .
+    //           .
+    //           .
+    //  |----------------------|----------------------|
+    //  |                      |                      |
+    //  |----------------------|----------------------|
+    //
+    // The effective LPID  forms the index into the Partition Table.
+    //
+    // Each entry in the partition table contains 2 double words, PATE0, PATE1,
+    // corresponding to that partition.
+    //
+    // In case of Radix, The structure of PATE0 and PATE1 is as follows.
+    //
+    //     PATE0 Layout
+    // -----------------------------------------------
+    // |1|RTS1|/|     RPDB          | RTS2 |  RPDS   |
+    // -----------------------------------------------
+    //  0 1  2 3 4                55 56  58 59      63
+    //
+    // HR[0] : For Radix Page table, first bit should be 1.
+    // RTS1[1:2] : Gives one fragment of the Radix treesize
+    // RTS2[56:58] : Gives the second fragment of the Radix Tree size.
+    // RTS = (RTS1 << 3 + RTS2) + 31.
+    //
+    // RPDB[4:55] = Root Page Directory Base.
+    // RPDS = Logarithm of Root Page Directory Size right shifted by 3.
+    //        Thus, Root page directory size = 1 << (RPDS + 3).
+    //        Note: RPDS >= 5.
+    //
+    //   PATE1 Layout
+    // -----------------------------------------------
+    // |///|       PRTB             |  //  |  PRTS   |
+    // -----------------------------------------------
+    // 0  3 4                     51 52  58 59     63
+    //
+    // PRTB[4:51]   = Process Table Base. This is aligned to size.
+    // PRTS[59: 63] = Process Table Size right shifted by 12.
+    //                Minimal size of the process table is 4k.
+    //                Process Table Size = (1 << PRTS + 12).
+    //                Note: PRTS <= 24.
+    //
+    //                Computing the size aligned Process Table Base:
+    //                   table_base = (PRTB  & ~((1 << PRTS) - 1)) << 12
+    //                Thus, the lower 12+PRTS bits of table_base will
+    //                be zero.
+
+    uint64_t pate1Addr = align(ptcr.patb, TABLE_BASE_ALIGN) +
+                         (efflpid*sizeof(uint64_t)*2) + 8;
+    uint64_t dataSize = 8;
+    uint64_t pate1 = this->readPhysMem(pate1Addr, dataSize);
+    DPRINTF(RadixWalk,"2nd Double word of partition table entry: %lx\n",pate1);
+
+    uint64_t prtb = extract(pate1, PRTB_SHIFT, PRTB_MASK);
+    prtb = align(prtb, TABLE_BASE_ALIGN);
+
+    //Ref: Power ISA Manual v3.0B, Book-III, section 5.7.6.2
+    //
+    //        Process Table
+    // ==========================
+    //  0    PRTE0            63  PRTE1             127
+    //  |----------------------|----------------------|
+    //  |                      |                      |
+    //  |----------------------|----------------------|
+    //  |                      |                      |
+    //  |----------------------|----------------------|
+    //  |                      |                      | <-- effPID
+    //  |----------------------|----------------------|
+    //           .
+    //           .
+    //           .
+    //  |----------------------|----------------------|
+    //  |                      |                      |
+    //  |----------------------|----------------------|
+    //
+    // The effective Process id (PID) forms the index into the Process Table.
+    //
+    // Each entry in the partition table contains 2 double words, PRTE0, PRTE1,
+    // corresponding to that process
+    //
+    // In case of Radix, The structure of PRTE0 and PRTE1 is as follows.
+    //
+    //     PRTE0 Layout
+    // -----------------------------------------------
+    // |/|RTS1|/|     RPDB          | RTS2 |  RPDS   |
+    // -----------------------------------------------
+    //  0 1  2 3 4                55 56  58 59      63
+    //
+    // RTS1[1:2] : Gives one fragment of the Radix treesize
+    // RTS2[56:58] : Gives the second fragment of the Radix Tree size.
+    // RTS = (RTS1 << 3 + RTS2) << 31,
+    //        since minimal Radix Tree size is 4G.
+    //
+    // RPDB = Root Page Directory Base.
+    // RPDS = Root Page Directory Size right shifted by 3.
+    //        Thus, Root page directory size = RPDS << 3.
+    //        Note: RPDS >= 5.
+    //
+    //   PRTE1 Layout
+    // -----------------------------------------------
+    // |                      ///                    |
+    // -----------------------------------------------
+    // 0                                            63
+    // All bits are reserved.
+
+    uint32_t effPID = geteffPID(tc, vaddr);
+    DPRINTF(RadixWalk,"effPID=%d\n", effPID);
+    uint64_t prte0Addr = prtb + effPID*sizeof(prtb)*2 ;
+    DPRINTF(RadixWalk,"Process table base: %lx\n",prtb);
+    uint64_t prte0 = this->readPhysMem(prte0Addr, dataSize);
+    //prte0 ---> Process Table Entry
+
+    DPRINTF(RadixWalk,"process table entry: %lx\n\n",prte0);
+    return prte0;
+}
+
+Addr
+RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,
+                    uint64_t curSize ,uint64_t usefulBits)
+{
+        uint64_t dataSize = 8;
+
+        if (curSize < 5) {
+            panic("vaddr = %lx, Radix RPDS = %lx,is less than 5\n",
+                  vaddr, curSize);
+        }
+        // vaddr                    64 Bit
+        // vaddr |-----------------------------------------------------|
+        //       | Unused    |  Used                                   |
+        //       |-----------|-----------------------------------------|
+        //       | 0000000   | usefulBits = X bits (typically 52)      |
+        //       |-----------|-----------------------------------------|
+        //       |           |<--Cursize---->|                         |
+        //       |           |    Index      |                         |
+        //       |           |    into Page  |                         |
+        //       |           |    Directory  |                         |
+        //       |-----------------------------------------------------|
+        //                        |                       |
+        //                        V                       |
+        // PDE  |---------------------------|             |
+        //      |V|L|//|  NLB       |///|NLS|             |
+        //      |---------------------------|             |
+        // PDE = Page Directory Entry                     |
+        // [0] = V = Valid Bit                            |
+        // [1] = L = Leaf bit. If 0, then                 |
+        // [4:55] = NLB = Next Level Base                 |
+        //                right shifted by 8              |
+        // [59:63] = NLS = Next Level Size                |
+        //            |    NLS >= 5                       |
+        //            |                                   V
+        //            |                     |--------------------------|
+        //            |                     |   usfulBits = X-Cursize  |
+        //            |                     |--------------------------|
+        //            |---------------------><--NLS-->|                |
+        //                                  | Index   |                |
+        //                                  | into    |                |
+        //                                  | PDE     |                |
+        //                                  |--------------------------|
+        //                                                    |
+        // If the next PDE obtained by                        |
+        // (NLB << 8 + 8 * index) is a                        |
+        // nonleaf, then repeat the above.                    |
+        //                                                    |
+        // If the next PDE is a leaf,                         |
+        // then Leaf PDE structure is as                      |
+        // follows                                            |
+        //                                                    |
+        //                                                    |
+        // Leaf PDE                                           |
+        // |------------------------------|           |----------------|
+        // |V|L|sw|//|RPN|sw|R|C|/|ATT|EAA|           | usefulBits     |
+        // |------------------------------|           |----------------|
+        // [0] = V = Valid Bit                                 |
+        // [1] = L = Leaf Bit = 1 if leaf                      |
+        //                      PDE                            |
+        // [2] = Sw = Sw bit 0.                                |
+        // [7:51] = RPN = Real Page Number,                    V
+        //          real_page = RPN << 12 ------------->  Logical OR
+        // [52:54] = Sw Bits 1:3                               |
+        // [55] = R = Reference                                |
+        // [56] = C = Change                                   V
+        // [58:59] = Att =                                Physical Address
+        //           0b00 = Normal Memory
+        //           0b01 = SAO
+        //           0b10 = Non Idenmpotent
+        //           0b11 = Tolerant I/O
+        // [60:63] = Encoded Access
+        //           Authority
+        //
+        uint64_t shift = usefulBits - curSize;
+        uint64_t mask = (1UL << curSize) - 1;
+        uint64_t index = extract(vaddr, shift, mask);
+
+        uint64_t entryAddr = curBase + (index * sizeof(uint64_t));
+        Rpde rpde = this->readPhysMem(entryAddr, dataSize);
+        DPRINTF(RadixWalk,"rpde:%lx\n",(uint64_t)rpde);
+        usefulBits = usefulBits - curSize;
+        //Ref: Power ISA Manual v3.0B, Book-III, section 5.7.10.2
+        if (rpde.leaf == 1)
+        {
+                uint64_t realpn = rpde & RPN_MASK;
+                uint64_t pageMask = (1UL << usefulBits) - 1;
+                Addr paddr = (realpn & ~pageMask) | (vaddr & pageMask);
+
+                //TODO: Check for permissions.
+                // We aren't doing that right now
+                // If there is a mismatch in the permissions,
+                // generate a fault.
+                DPRINTF(RadixWalk,"paddr:%lx\n",paddr);
+                return paddr;
+        }
+
+        uint64_t nextLevelBase = align(rpde.NLB, DIR_BASE_ALIGN);
+        uint64_t nextLevelSize = rpde.NLS;
+        DPRINTF(RadixWalk,"NLB: %lx\n",(uint64_t)nextLevelBase);
+        DPRINTF(RadixWalk,"NLS: %lx\n",(uint64_t)nextLevelSize);
+        DPRINTF(RadixWalk,"usefulBits: %lx",(uint64_t)usefulBits);
+        return walkTree(vaddr, nextLevelBase, nextLevelSize, usefulBits);
+}
+
+void
+RadixWalk::RadixPort::recvReqRetry()
+{
+
+}
+
+bool
+RadixWalk::RadixPort::recvTimingResp(PacketPtr pkt)
+{
+    return true;
+}
+
+BaseMasterPort &
+RadixWalk::getMasterPort(const std::string &if_name, PortID idx)
+{
+    if (if_name == "port")
+        return port;
+    else{
+        return MemObject::getMasterPort(if_name, idx);
+    }
+}
+
+/* end namespace PowerISA */ }
+
+PowerISA::RadixWalk *
+PowerRadixWalkParams::create()
+{
+    return new PowerISA::RadixWalk(this);
+}

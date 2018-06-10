@@ -229,7 +229,7 @@ class BaseCPU(MemObject):
     dcache_port = MasterPort("Data Port")
     _cached_ports = ['icache_port', 'dcache_port']
 
-    if buildEnv['TARGET_ISA'] in ['x86', 'arm']:
+    if buildEnv['TARGET_ISA'] in ['x86', 'arm', 'power']:
         _cached_ports += ["itb.walker.port", "dtb.walker.port"]
 
     _uncached_slave_ports = []

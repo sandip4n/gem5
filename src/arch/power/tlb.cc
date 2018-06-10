@@ -34,7 +34,6 @@
  *          Stephen Hines
  *          Timothy M. Jones
  */
-
 #include "arch/power/tlb.hh"
 
 #include <string>
@@ -43,6 +42,7 @@
 #include "arch/power/faults.hh"
 #include "arch/power/miscregs.hh"
 #include "arch/power/pagetable.hh"
+#include "arch/power/radixwalk.hh"
 #include "arch/power/registers.hh"
 #include "arch/power/utility.hh"
 #include "base/inifile.hh"
@@ -59,6 +59,8 @@
 using namespace std;
 using namespace PowerISA;
 
+namespace PowerISA {
+
 ///////////////////////////////////////////////////////////////////////
 //
 //  POWER TLB
@@ -72,6 +74,8 @@ TLB::TLB(const Params *p)
     table = new PowerISA::PTE[size];
     memset(table, 0, sizeof(PowerISA::PTE[size]));
     smallPages = 0;
+
+    rwalk = p->walker;
 }
 
 TLB::~TLB()
@@ -223,6 +227,12 @@ TLB::unserialize(CheckpointIn &cp)
     }
 }
 
+RadixWalk *
+TLB::getWalker()
+{
+    return rwalk;
+}
+
 void
 TLB::regStats()
 {
@@ -314,27 +324,36 @@ TLB::translateData(RequestPtr req, ThreadContext *tc, bool write)
 Fault
 TLB::translateAtomic(RequestPtr req, ThreadContext *tc, Mode mode)
 {
+    Addr paddr;
+    Addr vaddr = req->getVaddr();
+    DPRINTF(TLB, "Translating vaddr %#x.\n", vaddr);
+    vaddr &= 0x0fffffffffffffff;
     if (FullSystem){
-       Msr msr = tc->readIntReg(MISCREG_MSR);
+       Msr msr = tc->readIntReg(INTREG_MSR);
         if (mode == Execute){
-            if (msr.ir)
-                fatal("Translate Atomic not Implemented for POWER");
+            if (msr.ir){
+                printf("MSR: %lx\n",(uint64_t)msr);
+                Fault fault = rwalk->start(tc,req, mode);
+                paddr = req->getPaddr();
+                return fault;
+            }
             else{
-                Addr vaddr = req->getVaddr();
                 DPRINTF(TLB, "Translating vaddr %#x.\n", vaddr);
-                Addr paddr = vaddr;
+                paddr = vaddr;
                 DPRINTF(TLB, "Translated %#x -> %#x.\n", vaddr, paddr);
                 req->setPaddr(paddr);
                 return NoFault;
             }
         }
         else{
-            if (msr.dr)
-                fatal("Translate Atomic not Implemented for POWER");
+            if (msr.dr){
+                Fault fault = rwalk->start(tc,req, mode);
+                paddr = req->getPaddr();
+                return fault;
+            }
             else{
-                Addr vaddr = req->getVaddr();
                 DPRINTF(TLB, "Translating vaddr %#x.\n", vaddr);
-                Addr paddr = vaddr;
+                paddr = vaddr;
                 DPRINTF(TLB, "Translated %#x -> %#x.\n", vaddr, paddr);
                 req->setPaddr(paddr);
                 return NoFault;
@@ -373,6 +392,15 @@ TLB::index(bool advance)
 
     return *pte;
 }
+
+}
+
+BaseMasterPort *
+TLB::getMasterPort()
+{
+    return &rwalk->getMasterPort("port");
+}
+
 
 PowerISA::TLB *
 PowerTLBParams::create()

@@ -30,6 +30,16 @@
 
 from m5.SimObject import SimObject
 from m5.params import *
+from m5.proxy import *
+
+from MemObject import MemObject
+
+class PowerRadixWalk(MemObject):
+    type = 'PowerRadixWalk'
+    cxx_class = 'PowerISA::RadixWalk'
+    cxx_header = 'arch/power/radixwalk.hh'
+    port = MasterPort("Port for the hardware table walker")
+    system = Param.System(Parent.any, "system object")
 
 from BaseTLB import BaseTLB
 
@@ -38,3 +48,5 @@ class PowerTLB(BaseTLB):
     cxx_class = 'PowerISA::TLB'
     cxx_header = 'arch/power/tlb.hh'
     size = Param.Int(64, "TLB size")
+    walker = Param.PowerRadixWalk(\
+            PowerRadixWalk(), "page table walker")
