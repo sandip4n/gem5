@@ -33,6 +33,7 @@
 #ifndef __ARCH_POWER_ISA_HH__
 #define __ARCH_POWER_ISA_HH__
 
+#include "arch/power/miscregs.hh"
 #include "arch/power/registers.hh"
 #include "arch/power/types.hh"
 #include "base/logging.hh"
@@ -50,23 +51,18 @@ namespace PowerISA
 class ISA : public SimObject
 {
   protected:
+    MiscReg regVal[NumMiscRegs];
     MiscReg dummy;
-    MiscReg miscRegs[NumMiscRegs];
 
   public:
     typedef PowerISAParams Params;
-
     void
     clear()
     {
+        memset(regVal, 0, NumMiscRegs * sizeof(MiscReg));
     }
 
-    MiscReg
-    readMiscRegNoEffect(int misc_reg) const
-    {
-        fatal("Power does not currently have any misc regs defined\n");
-        return dummy;
-    }
+    MiscReg readMiscRegNoEffect(int misc_reg) const;
 
     MiscReg
     readMiscReg(int misc_reg, ThreadContext *tc)
@@ -75,11 +71,7 @@ class ISA : public SimObject
         return dummy;
     }
 
-    void
-    setMiscRegNoEffect(int misc_reg, const MiscReg &val)
-    {
-        fatal("Power does not currently have any misc regs defined\n");
-    }
+    void setMiscRegNoEffect(int misc_reg, const MiscReg &val);
 
     void
     setMiscReg(int misc_reg, const MiscReg &val, ThreadContext *tc)

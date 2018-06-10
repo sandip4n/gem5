@@ -39,6 +39,8 @@
 
 #include "arch/power/isa.hh"
 
+#include "arch/power/miscregs.hh"
+#include "cpu/base.hh"
 #include "params/PowerISA.hh"
 
 namespace PowerISA
@@ -54,6 +56,20 @@ const PowerISAParams *
 ISA::params() const
 {
     return dynamic_cast<const Params *>(_params);
+}
+
+MiscReg
+ISA::readMiscRegNoEffect(int misc_reg) const
+{
+    assert(isValidMiscReg(misc_reg));
+    return regVal[misc_reg];
+}
+
+void
+ISA::setMiscRegNoEffect(int misc_reg, const MiscReg &val)
+{
+    assert(isValidMiscReg(misc_reg));
+    regVal[misc_reg] = val;
 }
 
 }
