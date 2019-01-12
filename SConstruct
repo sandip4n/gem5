@@ -367,6 +367,10 @@ if main['GCC'] or main['CLANG']:
     main.Append(CCFLAGS=['-Werror',
                          '-Wno-error=deprecated-declarations',
                          '-Wno-error=deprecated',
+                         '-Wno-ignored-qualifiers',
+                         '-Wno-cast-function-type',
+                         '-Wno-error=class-memaccess',
+                         '-Wno-error=catch-value',
                         ])
 else:
     print(termcap.Yellow + termcap.Bold + 'Error' + termcap.Normal, end=' ')
