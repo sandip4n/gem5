@@ -164,9 +164,17 @@ decode PO default Unknown::unknown() {
         }
     }
 
+//TODO:Right now sc instruction not handles LEV=1 case
+
     format IntOp {
-        17: sc({{ xc->syscall(R0, &fault); }},
-               [ IsSyscall, IsNonSpeculative, IsSerializeAfter ]);
+        17: sc({{
+            if (FullSystem) {
+                fault= std::make_shared<SystemCallInterrupt>();
+            } else {
+                xc->syscall(R0, &fault);
+            }
+            }},
+              [ IsSyscall, IsNonSpeculative, IsSerializeAfter ]);
         2: tdi({{ }});
     }
 

@@ -139,6 +139,23 @@ class PowerInterrupt : public PowerFaultBase
 };
 
 
+class SystemCallInterrupt : public PowerInterrupt
+{
+  public:
+    SystemCallInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr)
+    {
+      //TODO: Right now it not handle case when LEV=0.
+      tc->setIntReg(INTREG_SRR0 , tc->instAddr() + 4);
+      PowerInterrupt::updateSRR1(tc);
+      PowerInterrupt::updateMsr(tc);
+      tc->pcState(SystemCallPCSet);
+    }
+};
+
 class DecrementerInterrupt : public PowerInterrupt
 {
   public:
