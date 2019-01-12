@@ -78,4 +78,6 @@ PowerSystem::initState()
     //ArgumentReg0 is initialized with 0xc00000 because in linux/system.cc
     //dtb is loaded at 0xc00000
     tc->setIntReg(ArgumentReg0, 0x1800000);
+    /* Perform a system reset */
+    tc->pcState(0x100);
 }
