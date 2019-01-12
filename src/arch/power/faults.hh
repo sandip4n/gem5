@@ -41,6 +41,14 @@
 #define setBitMask(shift) ( (uint64_t)1 << shift)
 #define unsetMask(start ,end)(~((setBitMask(start))-1) | ((setBitMask(end))-1))
 
+enum pcSet
+{   DecrementerPCSet = 0x900,
+    SystemCallPCSet = 0xC00,
+    ProgramPCSet = 0x700,
+    DataStoragePCSet = 0x300,
+    InstrStoragePCSet = 0x400
+};
+
 namespace PowerISA
 {
 
