@@ -148,14 +148,11 @@ class DecrementerInterrupt : public PowerInterrupt
     virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
                         StaticInst::nullStaticInstPtr)
     {
-      Msr msr = tc->readIntReg(MISCREG_MSR);
       // Refer Power ISA Manual v3.0B Book-III, section 6.5.11
       tc->setIntReg(INTREG_SRR0 , tc->instAddr());
-      uint64_t srr1 = msr & 0xffffffff78fc0fff;
-      tc->setIntReg(INTREG_SRR1 , srr1);
-      msr = msr & 0xffffffffffff76cd;
-      tc->setIntReg(INTREG_MSR , msr);
-      tc->pcState(0x900);
+      PowerInterrupt::updateSRR1(tc);
+      PowerInterrupt::updateMsr(tc);
+      tc->pcState(DecrementerPCSet);
     }
 };
 
