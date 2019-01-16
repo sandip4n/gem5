@@ -46,6 +46,21 @@ namespace PowerISA
                 Bitfield<4, 0> NLS;
         EndBitUnion(Rpde)
 
+        BitUnion64(Rpte)
+                Bitfield<63> valid;
+                Bitfield<62> leaf;
+                Bitfield<61> sw1;
+                Bitfield<56,12> rpn;
+                Bitfield<11,9> sw2;
+                Bitfield<8> ref;
+                Bitfield<7> c;
+                Bitfield<5,4> att;
+                Bitfield<3> pri;
+                Bitfield<2> read;
+                Bitfield<1> r_w;
+                Bitfield<0> exe;
+        EndBitUnion(Rpte)
+
         Fault start(ThreadContext * _tc, RequestPtr req, BaseTLB::Mode mode);
         BaseMasterPort &getMasterPort(const std::string &if_name,
                                       PortID idx = InvalidPortID);
