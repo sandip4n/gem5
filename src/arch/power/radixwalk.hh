@@ -64,9 +64,11 @@ namespace PowerISA
         Fault start(ThreadContext * _tc, RequestPtr req, BaseTLB::Mode mode);
         BaseMasterPort &getMasterPort(const std::string &if_name,
                                       PortID idx = InvalidPortID);
-      Addr getRPDEntry(ThreadContext * tc, Addr vaddr);
-        Addr walkTree(Addr vaddr ,uint64_t ptbase ,
-                      uint64_t ptsize ,uint64_t psize);
+
+        Addr getRPDEntry(ThreadContext * tc, Addr vaddr);
+        std::pair<Addr,Fault> walkTree(Addr vaddr ,uint64_t curBase ,
+                         ThreadContext * tc ,BaseTLB::Mode mode ,
+                         uint64_t curSize ,uint64_t usefulBits);
 
         typedef PowerRadixWalkParams Params;
 

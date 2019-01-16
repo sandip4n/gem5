@@ -139,6 +139,96 @@ class PowerInterrupt : public PowerFaultBase
     }
 };
 
+class InstrStorageInterrupt : public PowerInterrupt
+{
+public:
+  InstrStorageInterrupt()
+  {
+  }
+  virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr , uint64_t bitSet = 0)
+    {
+      tc->setIntReg(INTREG_SRR0 , tc->instAddr());
+      PowerInterrupt::updateSRR1(tc, bitSet);
+      PowerInterrupt::updateMsr(tc);
+      tc->pcState(InstrStoragePCSet);
+    }
+};
+
+class InstrInvalidInterrupt : public InstrStorageInterrupt
+{
+public:
+  InstrInvalidInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr)
+    {
+      InstrStorageInterrupt::invoke(tc, inst ,setBitMask(INVALID_SET_BIT));
+    }
+};
+
+//When permissions or privilege violates
+class InstrPriStorageInterrupt : public InstrStorageInterrupt
+{
+public:
+  InstrPriStorageInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr)
+    {
+      InstrStorageInterrupt::invoke(tc, inst ,setBitMask(PERMISSION_BIT));
+    }
+};
+
+class DataStorageInterrupt :public PowerInterrupt
+{
+public:
+  DataStorageInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr ,uint64_t bitSet = 0)
+    {
+      Msr msr = tc->readIntReg(INTREG_MSR);
+      tc->setIntReg(INTREG_SRR0 , tc->instAddr());
+      PowerInterrupt::updateSRR1(tc, 0);
+      uint64_t dsisr = tc->readIntReg(INTREG_DSISR);
+      dsisr = (dsisr & DSISR_MASK) | bitSet;
+      if (msr.dr)
+        dsisr = setbit(33, dsisr);
+      tc->setIntReg(INTREG_DSISR, dsisr);
+      PowerInterrupt::updateMsr(tc);
+      tc->pcState(DataStoragePCSet);
+    }
+};
+
+class DataInvalidInterrupt : public DataStorageInterrupt
+{
+public:
+  DataInvalidInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr)
+    {
+      DataStorageInterrupt::invoke(tc, inst ,setBitMask(INVALID_SET_BIT));
+    }
+};
+
+//When permissions or privilege violates
+class DataPriStorageInterrupt : public DataStorageInterrupt
+{
+public:
+  DataPriStorageInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr)
+    {
+      DataStorageInterrupt::invoke(tc, inst ,setBitMask(PERMISSION_BIT));
+    }
 };
 
 //TODO: Need to add Floating point and TM Bad thing fault handler

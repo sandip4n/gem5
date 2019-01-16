@@ -135,17 +135,24 @@ RadixWalk::start(ThreadContext * tc, RequestPtr req, BaseTLB::Mode mode)
     DPRINTF(RadixWalk,"RPDB: 0x%lx\n RPDS: 0x%lx\n usefulBits: %ld\n\n"
             ,rpdb,rpds,usefulBits);
 
-    //TODO:
-    //==========
-    // Fault should be generated as a return value of walkTree. Perhaps
-    // we can pass paddr as a pointer in which the physical address can
-    // be returned.
-    // As of now we assume that there are no faults.
-    Addr paddr = this->walkTree(vaddr, nextLevelBase,
+    std::pair<Addr, Fault> AddrTran;
+
+    Lpcr lpcr = tc->readIntReg(INTREG_LPCR);
+
+    if (lpcr.hr == 0 && lpcr.vc <= 3) {
+        if (mode == BaseTLB::Execute)
+            return std::make_shared<InstrInvalidInterrupt>();
+
+        return std::make_shared<DataInvalidInterrupt>();
+    }
+    AddrTran = this->walkTree(vaddr, nextLevelBase, tc, mode,
                                 nextLevelSize, usefulBits);
-    req->setPaddr(paddr);
-    DPRINTF(RadixWalk,"Radix Translated %#x -> %#x\n",vaddr,paddr);
-    return NoFault;
+    if (AddrTran.first) {
+      req->setPaddr(AddrTran.first);
+      DPRINTF(RadixWalk,"Radix Translated %#x -> %#x\n",
+      vaddr,AddrTran.first);
+    }
+    return AddrTran.second;
 }
 
 uint64_t
@@ -303,12 +310,11 @@ RadixWalk::getRPDEntry(ThreadContext * tc, Addr vaddr)
     return prte0;
 }
 
-Addr
-RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,
-                    uint64_t curSize ,uint64_t usefulBits)
+std::pair<Addr, Fault>
+RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,ThreadContext * tc ,
+    BaseTLB::Mode mode ,uint64_t curSize ,uint64_t usefulBits)
 {
         uint64_t dataSize = 8;
-
         if (curSize < 5) {
             panic("vaddr = %lx, Radix RPDS = %lx,is less than 5\n",
                   vaddr, curSize);
@@ -384,19 +390,42 @@ RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,
         Rpde rpde = this->readPhysMem(entryAddr, dataSize);
         DPRINTF(RadixWalk,"rpde:%lx\n",(uint64_t)rpde);
         usefulBits = usefulBits - curSize;
+        std::pair<Addr, Fault> AddrTran;
+
+        if (rpde.valid == 0) {
+            AddrTran.first = vaddr;
+            if (mode == BaseTLB::Execute)
+                AddrTran.second = std::make_shared<InstrInvalidInterrupt>();
+            else
+                AddrTran.second =  std::make_shared<DataInvalidInterrupt>();
+        return AddrTran;
+           }
+
         //Ref: Power ISA Manual v3.0B, Book-III, section 5.7.10.2
-        if (rpde.leaf == 1)
-        {
+        if (rpde.leaf == 1) {
+                Rpte  rpte = (uint64_t)rpde;
                 uint64_t realpn = rpde & RPN_MASK;
                 uint64_t pageMask = (1UL << usefulBits) - 1;
                 Addr paddr = (realpn & ~pageMask) | (vaddr & pageMask);
-
-                //TODO: Check for permissions.
-                // We aren't doing that right now
-                // If there is a mismatch in the permissions,
-                // generate a fault.
                 DPRINTF(RadixWalk,"paddr:%lx\n",paddr);
-                return paddr;
+                AddrTran.second = NoFault;
+                AddrTran.first = paddr;
+                Msr msr = tc->readIntReg(INTREG_MSR);
+
+                //Conditions for checking privileges and permissions
+            if (mode == BaseTLB::Execute &&
+                   (!rpte.exe || ( rpte.pri && msr.pr ))) {
+                AddrTran.second = std::make_shared<InstrPriStorageInterrupt>();
+              }
+
+            else if ( ( mode == BaseTLB::Read && !rpte.read ) ||
+                      ( mode == BaseTLB::Write && !rpte.r_w ) ||
+                      (( mode != BaseTLB::Execute)
+                                && (rpte.pri && msr.pr ))) {
+                AddrTran.second = std::make_shared<DataPriStorageInterrupt>();
+              }
+
+          return AddrTran;
         }
 
         uint64_t nextLevelBase = align(rpde.NLB, DIR_BASE_ALIGN);
@@ -404,7 +433,8 @@ RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,
         DPRINTF(RadixWalk,"NLB: %lx\n",(uint64_t)nextLevelBase);
         DPRINTF(RadixWalk,"NLS: %lx\n",(uint64_t)nextLevelSize);
         DPRINTF(RadixWalk,"usefulBits: %lx",(uint64_t)usefulBits);
-        return walkTree(vaddr, nextLevelBase, nextLevelSize, usefulBits);
+        return walkTree(vaddr, nextLevelBase, tc ,
+                             mode, nextLevelSize, usefulBits);
 }
 
 void
