@@ -88,11 +88,15 @@ class Interrupts : public SimObject
     checkInterrupts(ThreadContext *tc)
     {
         //panic("Interrupts::checkInterrupts not implemented.\n");
-        if ( tc->readIntReg(INTREG_DEC) == 0) {
+      Msr msr = tc->readIntReg(INTREG_MSR);
+      tc->setIntReg(INTREG_TB , tc->readIntReg(INTREG_TB)+1);
+      if ( tc->readIntReg(INTREG_DEC) == 0 && msr.ee) {
            si = true;
            return true;
         }
-        else {
+      else if (tc->readIntReg(INTREG_DEC) == 0 && !msr.ee) {
+       return false;
+      } else {
            tc->setIntReg(INTREG_DEC , tc->readIntReg(INTREG_DEC)-1);
            return false;
         }
