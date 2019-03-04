@@ -68,7 +68,7 @@ const int NumIntArchRegs = 32;
 
 // CR, XER, LR, CTR, TAR, FPSCR, RSV, RSV-LEN, RSV-ADDR
 // and zero register, which doesn't actually exist but needs a number
-const int NumIntSpecialRegs = 49;
+const int NumIntSpecialRegs = 87;
 const int NumFloatArchRegs = 32;
 const int NumFloatSpecialRegs = 0;
 const int NumInternalProcRegs = 0;
@@ -150,7 +150,45 @@ enum MiscIntRegNums {
     INTREG_HSRR0,
     INTREG_HSRR1,
     INTREG_HDEC,
-    INTREG_PCR
+    INTREG_PCR,
+    INTREG_AMR,
+    INTREG_TFHAR,
+    INTREG_TFIAR,
+    INTREG_TEXASR,
+    INTREG_TIDR,
+    INTREG_UAMOR,
+    INTREG_DPDES,
+    INTREG_DAWR0,
+    INTREG_RPR,
+    INTREG_CIABR,
+    INTREG_CIR,
+    INTREG_TBU40,
+    INTREG_SPURR,
+    INTREG_PURR,
+    INTREG_HDSISR,
+    INTREG_HDAR,
+    INTREG_HRMOR,
+    INTREG_HMER,
+    INTREG_HMEER,
+    INTREG_SIER,
+    INTREG_PMC1,
+    INTREG_PMC2,
+    INTREG_PMC3,
+    INTREG_PMC4,
+    INTREG_PMC5,
+    INTREG_PMC6,
+    INTREG_SDAR,
+    INTREG_BESCRS,
+    INTREG_BESCRSU,
+    INTREG_BESCRR,
+    INTREG_BESCRRU,
+    INTREG_EBBHR,
+    INTREG_EBBRR,
+    INTREG_BESCR,
+    INTREG_ASDR,
+    INTREG_IC,
+    INTREG_VTB,
+    INTREG_HSPRG1
 };
 
 } // namespace PowerISA
