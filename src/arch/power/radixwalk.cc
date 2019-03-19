@@ -46,6 +46,8 @@
 
 #define extract(x, shift, mask)   ((x >> shift) & mask)
 #define align(x, bits) (x << bits)
+#define setBitMask(shift) ( (uint64_t)1 << shift)
+#define unsetMask(start ,end)(~((setBitMask(start))-1) | ((setBitMask(end))-1))
 
 #define getRTS(x)      ((extract(x, RTS1_SHIFT, RTS1_MASK) << RTS2_BITS) | \
                         (extract(x, RTS2_SHIFT, RTS2_MASK)))
