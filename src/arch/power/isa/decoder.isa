@@ -486,6 +486,14 @@ decode PO default Unknown::unknown() {
                 }
             }});
 
+         //TODO: Right now we doesn't support DARN instruction
+         // Not returning random number, Just Setting value to -1.
+         //Need to FIX that instruction
+
+             755: darn({{
+                  Rt = -1;
+            }});
+
             777: modsd({{
                 int64_t src1 = Ra_sd;
                 int64_t src2 = Rb_sd;
