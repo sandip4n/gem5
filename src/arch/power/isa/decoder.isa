@@ -216,13 +216,13 @@ decode PO default Unknown::unknown() {
     format StoreDispOp {
         38: stb({{ Mem_ub = Rs_ub; }});
         44: sth({{ Mem_uh = Rs_uh; }});
-        36: stw({{ Mem = Rs_uw; }});
+        36: stw({{ Mem_uw = Rs_uw; }});
     }
 
     format StoreDispUpdateOp {
         39: stbu({{ Mem_ub = Rs_ub; }});
         45: sthu({{ Mem_uh = Rs_uh; }});
-        37: stwu({{ Mem = Rs_uw; }});
+        37: stwu({{ Mem_uw = Rs_uw; }});
     }
 
     format IntImmArithCheckRaOp {
