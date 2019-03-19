@@ -69,6 +69,23 @@ RadixWalk::readPhysMem(uint64_t addr, uint64_t dataSize)
     return ret;
 }
 
+uint64_t
+RadixWalk::writePhysMem(uint64_t addr, uint64_t dataSize)
+{
+    uint64_t ret;
+    Request::Flags flags = Request::PHYSICAL;
+
+    RequestPtr request = new Request(addr, dataSize, flags, this->masterId);
+    Packet *write = new Packet(request, MemCmd::WriteReq);
+    write->allocate();
+    this->port.sendAtomic(write);
+    ret = write->get<uint64_t>();
+
+    delete write->req;
+
+    return ret;
+}
+
 uint32_t geteffLPID(ThreadContext *tc)
 {
     Msr msr = tc->readIntReg(INTREG_MSR);
