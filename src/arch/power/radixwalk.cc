@@ -514,6 +514,13 @@ RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,ThreadContext * tc ,
               DPRINTF(RadixWalk,"Fault is due to protection violation\n");
               }
 
+            rpte.ref = 1;
+            if (mode == BaseTLB::Write) {
+                rpte.c = 1;
+            }
+            gtobe<uint64_t>(rpte);
+            this->writePhysMem(rpte, dataSize);
+
           return AddrTran;
         }
 
