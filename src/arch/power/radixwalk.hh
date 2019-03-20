@@ -70,6 +70,14 @@ namespace PowerISA
         std::pair<Addr,Fault> walkTree(Addr vaddr ,uint64_t curBase ,
                          ThreadContext * tc ,BaseTLB::Mode mode ,
                          uint64_t curSize ,uint64_t usefulBits);
+        Fault prepareSI(ThreadContext * tc,
+              RequestPtr req, BaseTLB::Mode mode, uint64_t BitMask);
+
+        Fault prepareISI(ThreadContext * tc,
+              RequestPtr req, uint64_t BitMask);
+
+        Fault prepareDSI(ThreadContext * tc, RequestPtr req,
+                         BaseTLB::Mode mode,uint64_t BitMask);
 
         typedef PowerRadixWalkParams Params;
 

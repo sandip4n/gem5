@@ -15,6 +15,7 @@
 #define PRTB_MASK      0x0ffffffffffff
 #define PRTB_ALIGN     4
 #define TABLE_BASE_ALIGN     PRTB_SHIFT
+#define DSISR_MASK    0x00000000ffffffff
 
 #define RPDB_SHIFT     8
 #define RPDB_MASK      0x0fffffffffffff
@@ -86,6 +87,40 @@ RadixWalk::writePhysMem(uint64_t addr, uint64_t dataSize)
     delete write->req;
 
     return ret;
+}
+
+Fault
+RadixWalk::prepareDSI(ThreadContext * tc, RequestPtr req,
+                    BaseTLB::Mode mode, uint64_t BitMask)
+{
+    uint64_t dsisr = tc->readIntReg(INTREG_DSISR);
+    dsisr = (dsisr & (~(DSISR_MASK))) | BitMask;
+    if (mode == BaseTLB::Write)
+      dsisr = dsisr | ISSTORE;
+    tc->setIntReg(INTREG_DSISR, dsisr);
+    tc->setIntReg(INTREG_DAR, req->getVaddr());
+    return std::make_shared<DataStorageInterrupt>();
+}
+
+Fault
+RadixWalk::prepareISI(ThreadContext * tc, RequestPtr req,
+                     uint64_t BitMask)
+{
+    Msr msr = tc->readIntReg(INTREG_MSR);
+    //here unsetting SRR1 bits 33-36 and 42-47 according to ISA
+    uint64_t srr1 = ((msr & unsetMask(31, 27)) & unsetMask(22,16)) | BitMask;
+    tc->setIntReg(INTREG_SRR1, srr1);
+    return std::make_shared<InstrStorageInterrupt>();
+}
+
+Fault
+RadixWalk::prepareSI(ThreadContext * tc, RequestPtr req,
+                    BaseTLB::Mode mode, uint64_t BitMask)
+{
+    if (mode != BaseTLB::Execute)
+      return prepareDSI(tc, req, mode, BitMask);
+    else
+      return prepareISI(tc, req, BitMask);
 }
 
 uint32_t geteffLPID(ThreadContext *tc)
