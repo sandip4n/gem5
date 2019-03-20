@@ -170,7 +170,7 @@ RadixWalk::start(ThreadContext * tc, RequestPtr req, BaseTLB::Mode mode)
 {
     Addr vaddr = req->getVaddr();
     // prte0 ---> Process Table Entry
-    DPRINTF(RadixWalk,"Translating vaddr = 0x%lx\n", vaddr);
+    DPRINTF(RadixWalk,"Translating vaddr = 0x%016lx\n", vaddr);
     uint64_t prte0 = getRPDEntry(tc, vaddr);
     // rpdb, rpds --->  Root Page Directory Base and Size
     uint64_t rpdb = extract(prte0, RPDB_SHIFT, RPDB_MASK);
@@ -186,7 +186,7 @@ RadixWalk::start(ThreadContext * tc, RequestPtr req, BaseTLB::Mode mode)
     // address translation.
     uint64_t usefulBits = rts + 31; //Typically is 52.
 
-    DPRINTF(RadixWalk,"RPDB: 0x%lx\n RPDS: 0x%lx\n usefulBits: %ld\n\n"
+    DPRINTF(RadixWalk,"RPDB: 0x%lx RPDS: 0x%lx usefulBits: %ld\n"
             ,rpdb,rpds,usefulBits);
 
     std::pair<Addr, Fault> AddrTran;
@@ -215,8 +215,8 @@ RadixWalk::getRPDEntry(ThreadContext * tc, Addr vaddr)
     Ptcr ptcr = tc->readIntReg(INTREG_PTCR);
     uint32_t efflpid = geteffLPID(tc);
 
-    DPRINTF(RadixWalk,"PTCR:%lx\n",(uint64_t)ptcr);
-    DPRINTF(RadixWalk,"effLPID: %x\n",efflpid);
+    DPRINTF(RadixWalk,"PTCR:0x%016lx\n",(uint64_t)ptcr);
+    DPRINTF(RadixWalk,"effLPID: %d\n",efflpid);
 
     //Accessing 2nd double word of partition table (pate1)
     //Ref: Power ISA Manual v3.0B, Book-III, section 5.7.6.1
@@ -299,7 +299,8 @@ RadixWalk::getRPDEntry(ThreadContext * tc, Addr vaddr)
                          (efflpid*sizeof(uint64_t)*2) + 8;
     uint64_t dataSize = 8;
     uint64_t pate1 = this->readPhysMem(pate1Addr, dataSize);
-    DPRINTF(RadixWalk,"2nd Double word of partition table entry: %lx\n",pate1);
+    DPRINTF(RadixWalk,"2nd Double word of partition table entry: 0x%016lx\n",
+            pate1);
 
     uint64_t prtb = extract(pate1, PRTB_SHIFT, PRTB_MASK);
     prtb = align(prtb, TABLE_BASE_ALIGN);
@@ -356,11 +357,11 @@ RadixWalk::getRPDEntry(ThreadContext * tc, Addr vaddr)
     uint32_t effPID = geteffPID(tc, vaddr);
     DPRINTF(RadixWalk,"effPID=%d\n", effPID);
     uint64_t prte0Addr = prtb + effPID*sizeof(prtb)*2 ;
-    DPRINTF(RadixWalk,"Process table base: %lx\n",prtb);
+    DPRINTF(RadixWalk,"Process table base: 0x%016lx\n",prtb);
     uint64_t prte0 = this->readPhysMem(prte0Addr, dataSize);
     //prte0 ---> Process Table Entry
 
-    DPRINTF(RadixWalk,"process table entry: %lx\n\n",prte0);
+    DPRINTF(RadixWalk,"process table entry: 0x%016lx\n",prte0);
     return prte0;
 }
 
@@ -442,7 +443,7 @@ RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,ThreadContext * tc ,
 
         uint64_t entryAddr = curBase + (index * sizeof(uint64_t));
         Rpde rpde = this->readPhysMem(entryAddr, dataSize);
-        DPRINTF(RadixWalk,"rpde:%lx\n",(uint64_t)rpde);
+        DPRINTF(RadixWalk,"rpde:0x%016lx\n",(uint64_t)rpde);
         usefulBits = usefulBits - curSize;
         std::pair<Addr, Fault> AddrTran;
 
@@ -461,7 +462,7 @@ RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,ThreadContext * tc ,
                 uint64_t realpn = rpde & RPN_MASK;
                 uint64_t pageMask = (1UL << usefulBits) - 1;
                 Addr paddr = (realpn & ~pageMask) | (vaddr & pageMask);
-                DPRINTF(RadixWalk,"paddr:%lx\n",paddr);
+                DPRINTF(RadixWalk,"paddr:0x%016lx\n",paddr);
                 AddrTran.second = NoFault;
                 AddrTran.first = paddr;
                 Msr msr = tc->readIntReg(INTREG_MSR);
@@ -484,8 +485,8 @@ RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,ThreadContext * tc ,
 
         uint64_t nextLevelBase = align(rpde.NLB, DIR_BASE_ALIGN);
         uint64_t nextLevelSize = rpde.NLS;
-        DPRINTF(RadixWalk,"NLB: %lx\n",(uint64_t)nextLevelBase);
-        DPRINTF(RadixWalk,"NLS: %lx\n",(uint64_t)nextLevelSize);
+        DPRINTF(RadixWalk,"NLB: 0x%lx\n",(uint64_t)nextLevelBase);
+        DPRINTF(RadixWalk,"NLS: 0x%lx\n",(uint64_t)nextLevelSize);
         DPRINTF(RadixWalk,"usefulBits: %lx",(uint64_t)usefulBits);
         return walkTree(vaddr, nextLevelBase, tc ,
                              mode, nextLevelSize, usefulBits);
