@@ -37,6 +37,17 @@
 #define RTS2_SHIFT     5
 #define RTS2_MASK      ((1 << RTS2_BITS) - 1)
 
+#define   NOHPTE      0x0000000040000000
+            /*Bit-33 Acc to ISA: no translation found */
+#define  PROTFAULT   0x0000000008000000
+           /* Bit-36 Acc to ISA:protection fault */
+#define  ISSTORE     0x0000000002000000
+           /* Bit-38 Acc to ISA:access was a store */
+#define  UNSUPP_MMU  0x0000000000080000
+           /*Bit-44 P9: Unsupported MMU config */
+#define  PRTABLE_FAULT 0x0000000000020000
+          /*Bit-46  P9: Fault on process table */
+
 #define RPN_MASK      0x01fffffffffff000
 
 #define QUADRANT_MASK 0xc000000000000000
@@ -192,18 +203,23 @@ RadixWalk::start(ThreadContext * tc, RequestPtr req, BaseTLB::Mode mode)
     std::pair<Addr, Fault> AddrTran;
 
     Lpcr lpcr = tc->readIntReg(INTREG_LPCR);
+    Msr msr = tc->readIntReg(INTREG_MSR);
+    AddrTran.first = vaddr;
 
-    if (lpcr.hr == 0 && lpcr.vc <= 3) {
-        if (mode == BaseTLB::Execute)
-            return std::make_shared<InstrInvalidInterrupt>();
-
-        return std::make_shared<DataInvalidInterrupt>();
+    if (( lpcr.hr == 0 && lpcr.vc <= 3 ) ||
+            ( msr.hv == 1 && msr.pr == 0 && msr.dr == 0 )) {
+        AddrTran.second = prepareSI(tc, req, mode,
+                       PRTABLE_FAULT);
+      DPRINTF(RadixWalk,"Fault Generated due to Process table fault\n");
+      return AddrTran.second;
     }
-    AddrTran = this->walkTree(vaddr, nextLevelBase, tc, mode,
+
+    AddrTran = this->walkTree(vaddr, nextLevelBase, tc, mode, req,
                                 nextLevelSize, usefulBits);
-    if (AddrTran.first) {
-      req->setPaddr(AddrTran.first);
-      DPRINTF(RadixWalk,"Radix Translated %#x -> %#x\n",
+    req->setPaddr(AddrTran.first);
+    if (AddrTran.second == NoFault) {
+
+      DPRINTF(RadixWalk,"Radix Translated 0x%016lx -> 0x%016lx\n",
       vaddr,AddrTran.first);
     }
     return AddrTran.second;
@@ -298,7 +314,7 @@ RadixWalk::getRPDEntry(ThreadContext * tc, Addr vaddr)
     uint64_t pate1Addr = align(ptcr.patb, TABLE_BASE_ALIGN) +
                          (efflpid*sizeof(uint64_t)*2) + 8;
     uint64_t dataSize = 8;
-    uint64_t pate1 = this->readPhysMem(pate1Addr, dataSize);
+    uint64_t pate1 = betog<uint64_t>(this->readPhysMem(pate1Addr, dataSize));
     DPRINTF(RadixWalk,"2nd Double word of partition table entry: 0x%016lx\n",
             pate1);
 
@@ -358,7 +374,7 @@ RadixWalk::getRPDEntry(ThreadContext * tc, Addr vaddr)
     DPRINTF(RadixWalk,"effPID=%d\n", effPID);
     uint64_t prte0Addr = prtb + effPID*sizeof(prtb)*2 ;
     DPRINTF(RadixWalk,"Process table base: 0x%016lx\n",prtb);
-    uint64_t prte0 = this->readPhysMem(prte0Addr, dataSize);
+    uint64_t prte0 = betog<uint64_t>(this->readPhysMem(prte0Addr, dataSize));
     //prte0 ---> Process Table Entry
 
     DPRINTF(RadixWalk,"process table entry: 0x%016lx\n",prte0);
@@ -367,12 +383,19 @@ RadixWalk::getRPDEntry(ThreadContext * tc, Addr vaddr)
 
 std::pair<Addr, Fault>
 RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,ThreadContext * tc ,
-    BaseTLB::Mode mode ,uint64_t curSize ,uint64_t usefulBits)
+    BaseTLB::Mode mode , RequestPtr req, uint64_t curSize ,uint64_t usefulBits)
 {
         uint64_t dataSize = 8;
+        std::pair<Addr, Fault> AddrTran;
+
         if (curSize < 5) {
-            panic("vaddr = %lx, Radix RPDS = %lx,is less than 5\n",
-                  vaddr, curSize);
+          DPRINTF(RadixWalk,"[PANIC] vaddr = %lx,Radix RPDS = %lx,< 5\n",
+                       vaddr, curSize);
+          AddrTran.first = vaddr;
+          AddrTran.second = prepareSI(tc, req, mode,
+                          UNSUPP_MMU);
+          DPRINTF(RadixWalk,"Fault due to unsupported Radix Tree config\n");
+        return AddrTran;
         }
         // vaddr                    64 Bit
         // vaddr |-----------------------------------------------------|
@@ -442,21 +465,28 @@ RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,ThreadContext * tc ,
         uint64_t index = extract(vaddr, shift, mask);
 
         uint64_t entryAddr = curBase + (index * sizeof(uint64_t));
-        Rpde rpde = this->readPhysMem(entryAddr, dataSize);
+        Rpde rpde = betog<uint64_t>(this->readPhysMem(entryAddr, dataSize));
         DPRINTF(RadixWalk,"rpde:0x%016lx\n",(uint64_t)rpde);
         usefulBits = usefulBits - curSize;
-        std::pair<Addr, Fault> AddrTran;
+        Msr msr = tc->readIntReg(INTREG_MSR);
 
         if (rpde.valid == 0) {
             AddrTran.first = vaddr;
-            if (mode == BaseTLB::Execute)
-                AddrTran.second = std::make_shared<InstrInvalidInterrupt>();
-            else
-                AddrTran.second =  std::make_shared<DataInvalidInterrupt>();
+            Lpcr lpcr = tc->readIntReg(INTREG_LPCR);
+
+            if (lpcr.hr == 0) {
+              AddrTran.second = prepareSI(tc, req, mode,
+                        PRTABLE_FAULT);
+              DPRINTF(RadixWalk,"Fault generated due to invalid pt entry\n");
+            }
+            else if (msr.dr == 1 || msr.ir == 1) {
+              AddrTran.second = prepareSI(tc, req, mode, NOHPTE);
+              DPRINTF(RadixWalk,"Fault due to translation not found\n");
+            }
         return AddrTran;
            }
 
-        //Ref: Power ISA Manual v3.0B, Book-III, section 5.7.10.2
+        //Ref: Power ISA Manual v3.0B, Book-III, section 5. 7.10.2
         if (rpde.leaf == 1) {
                 Rpte  rpte = (uint64_t)rpde;
                 uint64_t realpn = rpde & RPN_MASK;
@@ -465,19 +495,23 @@ RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,ThreadContext * tc ,
                 DPRINTF(RadixWalk,"paddr:0x%016lx\n",paddr);
                 AddrTran.second = NoFault;
                 AddrTran.first = paddr;
-                Msr msr = tc->readIntReg(INTREG_MSR);
+
 
                 //Conditions for checking privileges and permissions
             if (mode == BaseTLB::Execute &&
-                   (!rpte.exe || ( rpte.pri && msr.pr ))) {
-                AddrTran.second = std::make_shared<InstrPriStorageInterrupt>();
+                    (!rpte.exe || ( rpte.pri && msr.pr ))) {
+              AddrTran.second = prepareISI(tc, req,
+                            PROTFAULT);
+              DPRINTF(RadixWalk,"Fault is due to protection violation\n");
               }
 
             else if ( ( mode == BaseTLB::Read && !rpte.read ) ||
                       ( mode == BaseTLB::Write && !rpte.r_w ) ||
                       (( mode != BaseTLB::Execute)
                                 && (rpte.pri && msr.pr ))) {
-                AddrTran.second = std::make_shared<DataPriStorageInterrupt>();
+              AddrTran.second = prepareDSI(tc, req, mode,
+                                  PROTFAULT);
+              DPRINTF(RadixWalk,"Fault is due to protection violation\n");
               }
 
           return AddrTran;
@@ -489,7 +523,7 @@ RadixWalk::walkTree(Addr vaddr ,uint64_t curBase ,ThreadContext * tc ,
         DPRINTF(RadixWalk,"NLS: 0x%lx\n",(uint64_t)nextLevelSize);
         DPRINTF(RadixWalk,"usefulBits: %lx",(uint64_t)usefulBits);
         return walkTree(vaddr, nextLevelBase, tc ,
-                             mode, nextLevelSize, usefulBits);
+                              mode, req, nextLevelSize, usefulBits);
 }
 
 void

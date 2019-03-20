@@ -67,8 +67,9 @@ namespace PowerISA
                                       PortID idx = InvalidPortID);
 
         Addr getRPDEntry(ThreadContext * tc, Addr vaddr);
+
         std::pair<Addr,Fault> walkTree(Addr vaddr ,uint64_t curBase ,
-                         ThreadContext * tc ,BaseTLB::Mode mode ,
+            ThreadContext * tc ,BaseTLB::Mode mode , RequestPtr req,
                          uint64_t curSize ,uint64_t usefulBits);
         Fault prepareSI(ThreadContext * tc,
               RequestPtr req, BaseTLB::Mode mode, uint64_t BitMask);
