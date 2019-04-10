@@ -962,9 +962,11 @@ decode PO default Unknown::unknown() {
         }
 
         // These instructions all provide data cache hints
+        // Right now doesn't have cache support
         format MiscOp {
             278: dcbt({{ }});
             246: dcbtst({{ }});
+            86: dcbf({{ }});
             598: sync({{ }}, [ IsMemBarrier ]);
             854: eieio({{ }}, [ IsMemBarrier ]);
             54:  dcbst({{ }});
