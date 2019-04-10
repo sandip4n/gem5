@@ -161,7 +161,7 @@ class BranchDispCondOp : public BranchCondOp
     BranchDispCondOp(const char *mnem, MachInst _machInst, OpClass __opClass)
       : BranchCondOp(mnem, _machInst, __opClass),
         aaSet(false),
-        disp(sext<14>(machInst.bd << 2))
+        disp(sext<16>(machInst.bd << 2))
     {
     }
 
