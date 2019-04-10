@@ -966,6 +966,21 @@ decode PO default Unknown::unknown() {
         format MiscOp {
             278: dcbt({{ }});
             246: dcbtst({{ }});
+
+            1014: dcbz({{
+                  Request::Flags flags = Request::PHYSICAL;
+                  Addr EA;
+                  if(RA == 0)
+                    EA = Rb & -128ULL;
+                  else
+                    EA = (Ra + Rb) & -128ULL;
+                  Mem = 0;
+                  for (int i = 0; i < 16; ++i) {
+                    writeMemAtomic(xc, traceData, Mem,EA + i*8,
+                                            flags, NULL);
+                }
+            }});
+
             86: dcbf({{ }});
             598: sync({{ }}, [ IsMemBarrier ]);
             854: eieio({{ }}, [ IsMemBarrier ]);
