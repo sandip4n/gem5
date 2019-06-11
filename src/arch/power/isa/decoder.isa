@@ -962,6 +962,56 @@ decode PO default Unknown::unknown() {
             759: stfdux({{ Mem_df = Fs; }});
         }
 
+        format MiscOp {
+            238: msgclr({{
+                ThreadContext *tc = xc->tcBase();
+                ThreadID t = tc->threadId();
+                if(bits(Rb_ud, 31, 27) == 0x5) {
+                  tc->getCpuPtr()->clearInterrupt(t, 7, 0);
+                }
+                }});
+
+            886:msgsync({{ }});
+
+            206: msgsnd({{
+                if(bits(Rb_ud, 31, 27) == 0x5) {
+                  ThreadContext *tc = xc->tcBase();
+
+                  //Check for all threads in that processor
+                  //to generate Doorbell Interrupt.
+
+                  for(ThreadID i = 0; i < tc->getCpuPtr()->numContexts();
+                            i++) {
+                    if(i != tc->threadId())
+                    {
+
+                    ThreadContext *t = tc->getCpuPtr()->getContext(i);
+                    printf("Read register PIR value %d Thread Id %d\n",
+                        (int)t->readIntReg(INTREG_PIR),(int)i);
+                    uint32_t val1 = t->readIntReg(INTREG_PIR);
+                    printf("Read second register\n");
+                    printf("Read register Rb_ud value 0x%016lxThread Id %d\n",
+                            Rb_ud,(int)tc->threadId());
+                    uint64_t val2 = Rb_ud;
+                     printf("Reading done");
+                    if(bits(val1, 19, 0) == bits(val2, 19, 0)){
+                      printf("Intterupt Happen\n");
+                      t->getCpuPtr()->postInterrupt(i, 7, 0);
+                  }
+                   }
+                }
+                }
+                }});
+
+            174: msgclrp({{
+                ThreadContext *tc = xc->tcBase();
+                int t = tc->threadId();
+                if(bits(Rb_ud, 31, 27) == 0x5) {
+                  DPDES = DPDES & ~(1 << (t - 1));
+                }
+                }}, [ IsPrivileged ]);
+        }
+
         // These instructions all provide data cache hints
         // Right now doesn't have cache support
         format MiscOp {
