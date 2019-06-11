@@ -630,7 +630,7 @@ decode PO default Unknown::unknown() {
                 0x3c9: mflpcr({{Rt = LPCR;}});
                 0x3E8: mfpvr({{ Rt = PVR; }});
                 0x3e9: mflpidr({{Rt = LPIDR;}});
-
+                0x3ff: mfpir({{ Rt = PIR;}}, [ IsPrivileged ]);
             }
             467: decode SPR {
                 0x004: mttfhar({{TFHAR = Rs;}});

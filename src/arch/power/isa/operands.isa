@@ -147,6 +147,7 @@ def operands {{
     'IC': ('IntReg', 'ud', 'INTREG_IC', 'IsInteger' , 9),
     'VTB': ('IntReg', 'ud', 'INTREG_VTB', 'IsInteger' , 9),
     'HSPRG1': ('IntReg', 'ud', 'INTREG_HSPRG1', 'IsInteger' , 9),
+    'PIR': ('IntReg', 'uw', 'INTREG_PIR', 'IsInteger' , 9),
 
     # Setting as IntReg so things are stored as an integer, not double
     'FPSCR': ('IntReg', 'uw', 'INTREG_FPSCR', 'IsFloating', 9),
