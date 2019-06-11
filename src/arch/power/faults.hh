@@ -37,6 +37,7 @@
 #include "sim/faults.hh"
 
 #define SRR1_PRI_BIT      17
+#define SRR1_ILLEGAL_INSTR_BIT 18
 
 #define setbit(shift, mask) ( (uint64_t)1 << shift | mask)
 #define unsetbit(shift,mask) ( ~((uint64_t)1 << shift) & mask)
@@ -154,6 +155,19 @@ class ProgramInterrupt : public PowerInterrupt
       PowerInterrupt::updateSRR1(tc, bitSet);
       PowerInterrupt::updateMsr(tc);
       tc->pcState(ProgramPCSet);
+    }
+};
+
+class ProgramIllegalInterrupt : public ProgramInterrupt
+{
+  public:
+    ProgramIllegalInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr)
+    {
+      ProgramInterrupt::invoke(tc, inst ,setBitMask(SRR1_ILLEGAL_INSTR_BIT));
     }
 };
 

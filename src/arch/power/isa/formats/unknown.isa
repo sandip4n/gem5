@@ -73,10 +73,14 @@ output exec {{
     Fault
     Unknown::execute(ExecContext *xc, Trace::InstRecord *traceData) const
     {
-        panic("attempt to execute unknown instruction at %#x"
+        if (FullSystem) {
+            return std::make_shared<ProgramIllegalInterrupt>();
+        } else {
+            panic("attempt to execute unknown instruction at %#x"
               "(inst 0x%08x, opcode 0x%x, binary: %s)",
               xc->pcState().pc(), machInst, PO, inst2string(machInst));
-        return std::make_shared<UnimplementedOpcodeFault>();
+            return std::make_shared<UnimplementedOpcodeFault>();
+        }
     }
 }};
 
