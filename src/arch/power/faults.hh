@@ -36,6 +36,11 @@
 #include "cpu/thread_context.hh"
 #include "sim/faults.hh"
 
+#define setbit(shift, mask) ( (uint64_t)1 << shift | mask)
+#define unsetbit(shift,mask) ( ~((uint64_t)1 << shift) & mask)
+#define setBitMask(shift) ( (uint64_t)1 << shift)
+#define unsetMask(start ,end)(~((setBitMask(start))-1) | ((setBitMask(end))-1))
+
 namespace PowerISA
 {
 
@@ -94,6 +99,35 @@ class PowerInterrupt : public PowerFaultBase
         : PowerFaultBase("Interrupt")
     {
     }
+    virtual void updateMsr(ThreadContext * tc)
+      {
+        Msr msr = tc->readIntReg(INTREG_MSR);
+        msr.tm = 0;
+        msr.vec = 0;
+        msr.vsx = 0;
+        msr.fp = 0;
+        msr.pr = 0;
+        msr.pmm = 0;
+        msr.ir = 0;
+        msr.dr = 0;
+        msr.fe1 = 0;
+        msr.fe0 = 0;
+        msr.ee = 0;
+        msr.ri = 0;
+        msr.te = 0;
+        msr.sf = 1;
+        msr = unsetbit(5, msr);
+        tc->setIntReg(INTREG_MSR, msr);
+      }
+
+    virtual void updateSRR1(ThreadContext *tc, uint64_t BitMask=0x0000000)
+    {
+      Msr msr = tc->readIntReg(INTREG_MSR);
+      uint64_t srr1 = ((msr & unsetMask(31, 27)) & unsetMask(22,16)) | BitMask;
+      tc->setIntReg(INTREG_SRR1, srr1);
+    }
+};
+
 };
 
 
