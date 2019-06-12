@@ -66,6 +66,9 @@ void
 PowerSystem::initState()
 {
     System::initState();
+    printf("PowerSystem::initState: No of thread contexts %d\n" ,
+                    (int)threadContexts.size());
+
     ThreadContext *tc = threadContexts[0];
     tc->pcState(tc->getSystemPtr()->kernelEntry);
     //Sixty Four, little endian,Hypervisor bits are enabled.

@@ -236,7 +236,7 @@ class ProgramInterrupt : public PowerInterrupt
     virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
                        StaticInst::nullStaticInstPtr ,uint64_t bitSet = 0)
     {
-      tc->setIntReg(INTREG_SRR0, tc->instAddr() + 4);
+      tc->setIntReg(INTREG_SRR0, tc->instAddr());
       PowerInterrupt::updateSRR1(tc, bitSet);
       PowerInterrupt::updateMsr(tc);
       tc->pcState(ProgramPCSet);

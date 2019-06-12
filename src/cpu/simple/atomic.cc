@@ -371,7 +371,7 @@ AtomicSimpleCPU::readMem(Addr addr, uint8_t * data, unsigned size,
             }
             dcache_access = true;
 
-            assert(!pkt.isError());
+            //assert(!pkt.isError());
 
             if (req->isLLSC()) {
                 TheISA::handleLockedRead(thread, req);
@@ -489,7 +489,7 @@ AtomicSimpleCPU::writeMem(uint8_t *data, unsigned size, Addr addr,
                     threadSnoop(&pkt, curThread);
                 }
                 dcache_access = true;
-                assert(!pkt.isError());
+                //assert(!pkt.isError());
 
                 if (req->isSwap()) {
                     assert(res);
@@ -605,7 +605,7 @@ AtomicSimpleCPU::tick()
                     else
                         icache_latency = icachePort.sendAtomic(&ifetch_pkt);
 
-                    assert(!ifetch_pkt.isError());
+                   // assert(!ifetch_pkt.isError());
 
                     // ifetch_req is initialized to read the instruction directly
                     // into the CPU object's inst field.

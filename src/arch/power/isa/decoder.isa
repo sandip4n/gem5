@@ -967,6 +967,7 @@ decode PO default Unknown::unknown() {
                 ThreadContext *tc = xc->tcBase();
                 ThreadID t = tc->threadId();
                 if(bits(Rb_ud, 31, 27) == 0x5) {
+                  printf("Get msgclr instr for threadid %d\n",(int)t);
                   tc->getCpuPtr()->clearInterrupt(t, 7, 0);
                 }
                 }});
@@ -994,6 +995,7 @@ decode PO default Unknown::unknown() {
                             Rb_ud,(int)tc->threadId());
                     uint64_t val2 = Rb_ud;
                      printf("Reading done");
+                     printf("Msr value is 0x%016lx\n", MSR);
                     if(bits(val1, 19, 0) == bits(val2, 19, 0)){
                       printf("Intterupt Happen\n");
                       t->getCpuPtr()->postInterrupt(i, 7, 0);
