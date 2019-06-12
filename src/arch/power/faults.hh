@@ -36,6 +36,8 @@
 #include "cpu/thread_context.hh"
 #include "sim/faults.hh"
 
+#define SRR1_PRI_BIT      17
+
 #define setbit(shift, mask) ( (uint64_t)1 << shift | mask)
 #define unsetbit(shift,mask) ( ~((uint64_t)1 << shift) & mask)
 #define setBitMask(shift) ( (uint64_t)1 << shift)
@@ -138,6 +140,35 @@ class PowerInterrupt : public PowerFaultBase
 
 };
 
+//TODO: Need to add Floating point and TM Bad thing fault handler
+class ProgramInterrupt : public PowerInterrupt
+{
+  public:
+    ProgramInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr ,uint64_t bitSet = 0)
+    {
+      tc->setIntReg(INTREG_SRR0, tc->instAddr() + 4);
+      PowerInterrupt::updateSRR1(tc, bitSet);
+      PowerInterrupt::updateMsr(tc);
+      tc->pcState(ProgramPCSet);
+    }
+};
+
+class ProgramPriInterrupt : public ProgramInterrupt
+{
+  public:
+    ProgramPriInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr)
+    {
+      ProgramInterrupt::invoke(tc, inst, setBitMask(SRR1_PRI_BIT));
+    }
+};
 
 class SystemCallInterrupt : public PowerInterrupt
 {

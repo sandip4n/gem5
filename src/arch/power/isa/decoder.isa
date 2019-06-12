@@ -141,7 +141,7 @@ decode PO default Unknown::unknown() {
                 MSR = insertBits(MSR,11,6,bits(SRR1,11,6));
                 MSR = insertBits(MSR,3,0,bits(SRR1,3,0));
                 NIA = SRR0 & -4ULL;
-            }});
+            }}, [ IsPrivileged ]);
             274:  hrfid({{
                 if((bits(MSR,34,32)!=0x02)|(bits(HSRR1,34,32)!=0x00))
                     MSR = insertBits(MSR,34,32,bits(HSRR1,34,32));
@@ -627,7 +627,9 @@ decode PO default Unknown::unknown() {
                 0x2c9: mthdec({{HDEC = Rs;}});
                 0x24a: mtpcr({{PCR = Rs;}});
             }
-            83: mfmsr({{ Rt = MSR }});
+
+            83: mfmsr({{ Rt = MSR; }}, [ IsPrivileged ]);
+
             178: mtmsrd({{
                 if (L == 0 ) {
                     uint64_t val = bits(Rs, 34, 32);
@@ -667,7 +669,7 @@ decode PO default Unknown::unknown() {
                      MSR = insertBits(MSR,15,bits(Rs,15));
                      MSR = insertBits(MSR,1,bits(Rs,1));
                  }
-            }});
+            }}, [ IsPrivileged ]);
         }
 
         // Integer logic instructions use source registers Rs and Rb,
@@ -888,9 +890,9 @@ decode PO default Unknown::unknown() {
             54:  dcbst({{ }});
             982: icbi({{ }});
             306: tlbie({{ }});
-            274: tlbiel({{ }});
+            274: tlbiel({{ }}, [ IsPrivileged ]);
             566: tlbsync({{ }});
-            498: slbia({{ }});
+            498: slbia({{ }}, [ IsPrivileged ]);
         }
 
         // These instructions are of XO form with bit 21 as the OE bit.
