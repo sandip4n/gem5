@@ -80,4 +80,9 @@ PowerSystem::initState()
     //ArgumentReg0 is initialized with 0xc00000 because in linux/system.cc
     //dtb is loaded at 0xc00000
     tc->setIntReg(ArgumentReg0, 0x1800000);
+    ThreadID tid = 1;
+    ThreadContext *tc1 = threadContexts[tid];
+    tc1->pcState(0xc00000000000a840);
+    tc1->setIntReg(ArgumentReg0, 0x1);
+    tc1->setIntReg(INTREG_PIR,0x1);
 }

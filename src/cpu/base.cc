@@ -467,7 +467,8 @@ void
 BaseCPU::registerThreadContexts()
 {
     assert(system->multiThread || numThreads == 1);
-
+    printf("System in multithread: %d\n",system->multiThread );
+     printf("NumThreads:: %d\n",numThreads );
     ThreadID size = threadContexts.size();
     for (ThreadID tid = 0; tid < size; ++tid) {
         ThreadContext *tc = threadContexts[tid];

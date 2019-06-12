@@ -37,6 +37,17 @@
 #include "params/PowerInterrupts.hh"
 #include "sim/sim_object.hh"
 
+#define NumInterruptLevels 8
+
+#define SystemReset 0 //System Reset Interrupt(Highest Priority)
+#define MachineCheck 1 //Machine Check Interrupt
+#define DirectExt 2 //Direct External Interrupt
+#define MediatedExt 3 //Mediated External Interrupt
+#define Decrementer 4 //Decrementer Interrupt
+#define PerfMoniter 5 //Performance Monitor Interrupt
+#define DirPriDoorbell 6 //Directed Privileged Doorbell Interrupt
+#define DirHypDoorbell 7 //Directed Hypervisor Doorbell Interrupt
+
 class BaseCPU;
 class ThreadContext;
 
@@ -46,7 +57,9 @@ class Interrupts : public SimObject
 {
   private:
     BaseCPU * cpu;
-    bool si = false;
+
+  protected:
+    bool interrupts[NumInterruptLevels];
 
   public:
     typedef PowerInterruptsParams Params;
@@ -58,7 +71,9 @@ class Interrupts : public SimObject
     }
 
     Interrupts(Params * p) : SimObject(p), cpu(NULL)
-    {}
+    {
+        memset(interrupts, 0, sizeof(interrupts));
+    }
 
     void
     setCPU(BaseCPU * _cpu)
@@ -69,45 +84,64 @@ class Interrupts : public SimObject
     void
     post(int int_num, int index)
     {
-        panic("Interrupts::post not implemented.\n");
+       DPRINTF(Interrupt, "Interrupt %d: posted\n", int_num);
+       if (int_num < 0 || int_num >= NumInterruptLevels)
+         panic("int_num out of bounds for fun POST%d\n",int_num);
+       interrupts[int_num] = 1;
     }
 
     void
     clear(int int_num, int index)
     {
-        panic("Interrupts::clear not implemented.\n");
+       DPRINTF(Interrupt, "Interrupt %d:\n", int_num);
+       if (int_num < 0 || int_num >= NumInterruptLevels)
+         panic("int_num out of bounds for fun CLEAR%d\n",int_num);
+       interrupts[int_num] = 0;
     }
 
     void
     clearAll()
     {
-        panic("Interrupts::clearAll not implemented.\n");
+       memset(interrupts, 0, sizeof(interrupts));
     }
 
     bool
     checkInterrupts(ThreadContext *tc)
     {
-        //panic("Interrupts::checkInterrupts not implemented.\n");
-      Msr msr = tc->readIntReg(INTREG_MSR);
-      tc->setIntReg(INTREG_TB , tc->readIntReg(INTREG_TB)+1);
-      if ( tc->readIntReg(INTREG_DEC) == 0 && msr.ee) {
-           si = true;
-           return true;
-        }
-      else if (tc->readIntReg(INTREG_DEC) == 0 && !msr.ee) {
+       Msr msr = tc->readIntReg(INTREG_MSR);
+       tc->setIntReg(INTREG_TB , tc->readIntReg(INTREG_TB)+1);
+       if (tc->readIntReg(INTREG_DEC) != 0)
+         tc->setIntReg(INTREG_DEC , tc->readIntReg(INTREG_DEC)-1);
+       else
+         interrupts[Decrementer] = 1;
+       if (msr.ee)
+       {
+         for (int i = 0; i < NumInterruptLevels; i++) {
+             if (interrupts[i] == 1)
+               return true;
+         }
+       }
+       if (interrupts[DirHypDoorbell] && (!msr.hv || msr.pr))
+         return true;
        return false;
-      } else {
-           tc->setIntReg(INTREG_DEC , tc->readIntReg(INTREG_DEC)-1);
-           return false;
-        }
     }
 
     Fault
     getInterrupt(ThreadContext *tc)
     {
         assert(checkInterrupts(tc));
-        if (si)
-        return std::make_shared<DecrementerInterrupt>();
+        if (interrupts[Decrementer]) {
+            clear(Decrementer,0);
+            return std::make_shared<DecrementerInterrupt>();
+        }
+        else if (interrupts[DirPriDoorbell]) {
+            clear(DirPriDoorbell,0);
+            return std::make_shared<PriDoorbellInterrupt>();
+        }
+        else if (interrupts[DirHypDoorbell]) {
+            clear(DirHypDoorbell,0);
+            return std::make_shared<HypDoorbellInterrupt>();
+        }
         else return NoFault;
     }
 
@@ -115,7 +149,6 @@ class Interrupts : public SimObject
     updateIntrInfo(ThreadContext *tc)
     {
         tc->setIntReg(INTREG_DEC , 0xffffffffffffffff);
-        si = false;
     }
 };
 

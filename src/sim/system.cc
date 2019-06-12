@@ -300,8 +300,9 @@ void
 System::initState()
 {
     if (FullSystem) {
-        for (int i = 0; i < threadContexts.size(); i++)
-            TheISA::startupCPU(threadContexts[i], i);
+        for (int i = 0; i < threadContexts.size(); i++){
+            printf("[LOG]: Starting CPU with id %d\n",i);
+            TheISA::startupCPU(threadContexts[i], i);}
         // Moved from the constructor to here since it relies on the
         // address map being resolved in the interconnect
         /**

@@ -705,6 +705,8 @@ def makeLinuxPowerSystem(mem_mode, numCPUs=1, mdesc=None, cmdline=None):
     self.boot_osflags = fillInCmdline(mdesc, cmdline)
     self.kernel = binary('vmlinux')
     self.dtb_filename = binary('gem5-power9-fs.dtb')
+    self.multi_thread = True;
+    self._num_cpus = 2;
     return self
 
 
