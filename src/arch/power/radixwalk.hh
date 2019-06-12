@@ -35,9 +35,9 @@ namespace PowerISA
         RadixPort port;
         System * sys;
         MasterID masterId;
-      uint64_t readPhysMem(uint64_t addr, uint64_t dataSize);
 
       public:
+        uint64_t readPhysMem(uint64_t addr, uint64_t dataSize);
         uint64_t writePhysMem(uint64_t addr, uint64_t dataSize);
 
         BitUnion64(Rpde)

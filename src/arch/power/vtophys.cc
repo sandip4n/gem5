@@ -29,6 +29,7 @@
  */
 
 #include "arch/power/vtophys.hh"
+#include "arch/power/radixwalk.hh"
 
 using namespace std;
 
@@ -41,6 +42,14 @@ PowerISA::vtophys(Addr vaddr)
 Addr
 PowerISA::vtophys(ThreadContext *tc, Addr addr)
 {
-    fatal("vtophys: Unimplemented on POWER\n");
+   // fatal("vtophys: Unimplemented on POWER\n");
+    RadixWalk *rwalk = dynamic_cast<TLB *>(tc->getDTBPtr())->getWalker();
+    RequestPtr ptr = new Request();
+    ptr->setVirt(0,addr,8,
+        256,6,43384);
+    // Have to set a bogus request even though just the virtual addr
+    // is needed by the whole code path.
+    rwalk->start(tc,ptr,BaseTLB::Read);
+    return ptr->getPaddr();
 }
 

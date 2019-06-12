@@ -55,6 +55,9 @@ enum pcSet
     HypDoorbellPCSet = 0xe80
 };
 
+extern long stdout_buf_addr;
+extern long stdout_buf_length;
+
 namespace PowerISA
 {
 
@@ -282,7 +285,9 @@ class ProgramPriInterrupt : public ProgramInterrupt
 class SystemCallInterrupt : public PowerInterrupt
 {
   public:
-    SystemCallInterrupt()
+    SystemCallInterrupt();
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst);
+    /* SystemCallInterrupt()
     {
     }
     virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
@@ -294,6 +299,7 @@ class SystemCallInterrupt : public PowerInterrupt
       PowerInterrupt::updateMsr(tc);
       tc->pcState(SystemCallPCSet);
     }
+    */
 };
 
 class DecrementerInterrupt : public PowerInterrupt

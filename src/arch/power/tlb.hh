@@ -107,7 +107,7 @@ class TLB : public BaseTLB
     PowerISA::PTE *table;       // the Page Table
     int size;                   // TLB Size
     int nlu;                    // not last used entry (for replacement)
-
+    uint64_t printk_debug;      // Address to probe for the debug;
     void
     nextnlu()
     {

@@ -282,8 +282,8 @@ class Request
         STICKY_PRIVATE_FLAGS = VALID_CONTEXT_ID
     };
 
-  private:
-
+  //private:
+  public:
     /**
      * Set up a physical (e.g. device) request in a previously
      * allocated Request object.

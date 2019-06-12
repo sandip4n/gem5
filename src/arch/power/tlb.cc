@@ -59,8 +59,27 @@
 using namespace std;
 using namespace PowerISA;
 
+long stdout_buf_length=0;
+long stdout_buf_addr=0;
+
 namespace PowerISA {
 
+SystemCallInterrupt::SystemCallInterrupt(){
+}
+void
+SystemCallInterrupt::invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr){
+
+      tc->setIntReg(INTREG_SRR0 , tc->instAddr() + 4);
+      PowerInterrupt::updateSRR1(tc);
+      PowerInterrupt::updateMsr(tc);
+      tc->pcState(SystemCallPCSet);
+      std::printf("System call number = %lu\n", tc->readIntReg(0));
+      if (tc->readIntReg(0) == 4){
+        stdout_buf_length = (int)tc->readIntReg(5);
+        stdout_buf_addr = tc->readIntReg(4);
+     }
+}
 ///////////////////////////////////////////////////////////////////////
 //
 //  POWER TLB
@@ -68,14 +87,38 @@ namespace PowerISA {
 
 #define MODE2MASK(X) (1 << (X))
 
+//uint64_t printk_debug;
+
 TLB::TLB(const Params *p)
     : BaseTLB(p), size(p->size), nlu(0)
 {
     table = new PowerISA::PTE[size];
     memset(table, 0, sizeof(PowerISA::PTE[size]));
     smallPages = 0;
-
     rwalk = p->walker;
+    ifstream stream;
+    stream.open("dist/m5/system/binaries/objdump");
+    string addr_str;
+    bool flag = false;
+    while (getline(stream, addr_str)) {
+        if (!flag){
+            if (addr_str.find("<log_store>:") != string::npos) {
+                flag = true;
+            }
+        }
+        else{
+            if (addr_str.find("memcpy") != string::npos){
+                break;
+            }
+        }
+    }
+    addr_str = addr_str.substr(1,15); // Extract the address
+    addr_str.insert (0, 1, '0'); // Prepend with `0` instead of `c`
+    istringstream converter(addr_str);
+    uint64_t value;
+    converter >> hex >> value;
+    value-=4; // Need the previous inst
+    this->printk_debug = value;
 }
 
 TLB::~TLB()
@@ -329,12 +372,49 @@ TLB::translateAtomic(RequestPtr req, ThreadContext *tc, Mode mode)
     DPRINTF(TLB, "Translating vaddr %#x.\n", vaddr);
     vaddr &= 0x0fffffffffffffff;
     if (FullSystem){
-       Msr msr = tc->readIntReg(INTREG_MSR);
+        if (stdout_buf_length){
+            RequestPtr ptr = new Request();
+            Msr msr = tc->readIntReg(INTREG_MSR);
+            msr.dr = 1;
+            tc->setIntReg(INTREG_MSR,msr);
+            ptr->setVirt(req->_asid,stdout_buf_addr,8,
+                         req->_flags,req->_masterId,req->_pc);
+            rwalk->start(tc,ptr,BaseTLB::Read);
+            char stdout_buf[stdout_buf_length + 1];
+            Addr stdout_paddr = ptr->getPaddr();
+            int i = 0;
+            char read;
+            for (i=0; i<stdout_buf_length; i++){
+                read =  (char)rwalk->readPhysMem(stdout_paddr + i, 8);
+               stdout_buf[i] = read;
+            }
+            stdout_buf[i] = '\0';
+            //DPRINTF(TLB, "[STDOUT LOG] %s",stdout_buf);
+            std::printf("%lu [STDOUT] %s",curTick(),stdout_buf);
+            std::fflush(stdout);
+            stdout_buf_length = 0;
+        }
+        Msr msr = tc->readIntReg(INTREG_MSR);
         if (mode == Execute){
             if (msr.ir){
-                printf("MSR: %lx\n",(uint64_t)msr);
+                //printf("MSR: %lx\n",(uint64_t)msr);
                 Fault fault = rwalk->start(tc,req, mode);
                 paddr = req->getPaddr();
+                if (paddr == printk_debug){
+                  int len = (int)tc->readIntReg(5);
+                  char buf[len];
+                  int i;
+                  char read;
+                  for (i=0; i<len; i++){
+                    read =  (char)rwalk->readPhysMem((tc->readIntReg(4)
+                                  & 0x0fffffffffffffff)+ i, 8);
+                    buf[i] = read;
+                  }
+                  buf[i] = '\0';
+                  //DPRINTF(TLB, "[KERN LOG] %s\n",buf);
+                  std::printf("%lu [KERN LOG] %s\n",curTick(),buf);
+                  std::fflush(stdout);
+                }
                 return fault;
             }
             else{
@@ -342,7 +422,24 @@ TLB::translateAtomic(RequestPtr req, ThreadContext *tc, Mode mode)
                 paddr = vaddr;
                 DPRINTF(TLB, "Translated %#x -> %#x.\n", vaddr, paddr);
                 req->setPaddr(paddr);
+
+                if (paddr == printk_debug){
+                  int len = (int)tc->readIntReg(5);
+                  int i;
+                  char buf[len];
+                  char read;
+                  for (i=0; i<len; i++){
+                    read =  (char)rwalk->readPhysMem((tc->readIntReg(4)
+                                  & 0x0fffffffffffffff)+ i, 8);
+                    buf[i] = read;
+                  }
+                  buf[i] = '\0';
+                  //DPRINTF(TLB, "[KERN LOG] %s\n",buf);
+                  std::printf("%lu [KERN LOG] %s\n",curTick(),buf);
+                  std::fflush(stdout);
+                }
                 return NoFault;
+
             }
         }
         else{

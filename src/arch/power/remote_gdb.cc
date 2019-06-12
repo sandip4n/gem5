@@ -167,7 +167,9 @@ RemoteGDB::acc(Addr va, size_t len)
     // processing the MemR/MemW packets before actually asking the translating
     // port proxy to read/writeBlob.  I (bgs) am not convinced the first byte
     // check is enough.
-    panic_if(FullSystem, "acc not implemented for POWER FS!");
+    //panic_if(FullSystem, "acc not implemented for POWER FS!");
+    if (FullSystem)
+        return true;
     return context()->getProcessPtr()->pTable->lookup(va) != nullptr;
 }
 
@@ -176,22 +178,23 @@ RemoteGDB::PowerGdbRegCache::getRegs(ThreadContext *context)
 {
     DPRINTF(GDBAcc, "getRegs in remotegdb \n");
 
-    // Default order on 32-bit PowerPC:
-    // R0-R31 (32-bit each), F0-F31 (64-bit IEEE754 double),
-    // PC, MSR, CR, LR, CTR, XER (32-bit each)
+    // Default order on 64-bit PowerPC:
+    // GPRR0-GPRR31 (64-bit each), FPR0-FPR31 (64-bit IEEE754 double),
+    // CIA, MSR, CR, FPSCR, XER, LR, CTR, TAR
+    // where only CR, FPSCR, XER are 32-bit each and the rest are 64-bit
 
     for (int i = 0; i < NumIntArchRegs; i++)
-        r.gpr[i] = htobe((uint32_t)context->readIntReg(i));
+        r.gpr[i] = htog(context->readIntReg(i));
 
     for (int i = 0; i < NumFloatArchRegs; i++)
         r.fpr[i] = context->readFloatRegBits(i);
 
-    r.pc = htobe((uint32_t)context->pcState().pc());
+    r.pc = htog(context->pcState().pc());
     r.msr = 0; // Is MSR modeled?
-    r.cr = htobe((uint32_t)context->readIntReg(INTREG_CR));
-    r.lr = htobe((uint32_t)context->readIntReg(INTREG_LR));
-    r.ctr = htobe((uint32_t)context->readIntReg(INTREG_CTR));
-    r.xer = htobe((uint32_t)context->readIntReg(INTREG_XER));
+    r.cr = htog((uint32_t)context->readIntReg(INTREG_CR));
+    r.lr = htog(context->readIntReg(INTREG_LR));
+    r.ctr = htog(context->readIntReg(INTREG_CTR));
+    r.xer = htog((uint32_t)context->readIntReg(INTREG_XER));
 }
 
 void
@@ -200,17 +203,17 @@ RemoteGDB::PowerGdbRegCache::setRegs(ThreadContext *context) const
     DPRINTF(GDBAcc, "setRegs in remotegdb \n");
 
     for (int i = 0; i < NumIntArchRegs; i++)
-        context->setIntReg(i, betoh(r.gpr[i]));
+        context->setIntReg(i, gtoh(r.gpr[i]));
 
     for (int i = 0; i < NumFloatArchRegs; i++)
         context->setFloatRegBits(i, r.fpr[i]);
 
-    context->pcState(betoh(r.pc));
+    context->pcState(gtoh(r.pc));
     // Is MSR modeled?
-    context->setIntReg(INTREG_CR, betoh(r.cr));
-    context->setIntReg(INTREG_LR, betoh(r.lr));
-    context->setIntReg(INTREG_CTR, betoh(r.ctr));
-    context->setIntReg(INTREG_XER, betoh(r.xer));
+    context->setIntReg(INTREG_CR, gtoh(r.cr));
+    context->setIntReg(INTREG_LR, gtoh(r.lr));
+    context->setIntReg(INTREG_CTR, gtoh(r.ctr));
+    context->setIntReg(INTREG_XER, gtoh(r.xer));
 }
 
 BaseGdbRegCache*
