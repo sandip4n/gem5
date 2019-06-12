@@ -138,6 +138,14 @@ class PowerInterrupt : public PowerFaultBase
       uint64_t srr1 = ((msr & unsetMask(31, 27)) & unsetMask(22,16)) | BitMask;
       tc->setIntReg(INTREG_SRR1, srr1);
     }
+
+    virtual void updateHSRR1(ThreadContext *tc, uint64_t BitMask=0x0000000)
+    {
+      Msr msr = tc->readIntReg(INTREG_MSR);
+      uint64_t hsrr1 = ((msr & unsetMask(31, 27)) & unsetMask(22,16)) |
+                                                    BitMask;
+      tc->setIntReg(INTREG_HSRR1, hsrr1);
+    }
 };
 
 //SRR1 value is correctly set by the entity raising
