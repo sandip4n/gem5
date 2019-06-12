@@ -175,7 +175,6 @@ decode PO default Unknown::unknown() {
             }
             }},
               [ IsSyscall, IsNonSpeculative, IsSerializeAfter ]);
-        2: tdi({{ }});
     }
 
     format LoadDispOp {
@@ -281,6 +280,38 @@ decode PO default Unknown::unknown() {
             }});
         }
     }
+
+
+    format IntImmArithOp {
+
+        3: twi({{
+             if(FullSystem) {
+               int32_t val = Ra_sw;
+               if(((TO & 0x10) && (val < simm))                    ||
+                 ((TO & 0x08) && (val > simm))                     ||
+                 ((TO & 0x04) && (val == simm))                    ||
+                 ((TO & 0x02) && ((uint32_t)val < (uint32_t)simm)) ||
+                 ((TO & 0x01) && ((uint32_t)val > (uint32_t)simm))) {
+                  fault= std::make_shared<ProgramTrapInterrupt>();
+               }
+             }
+        }});
+
+        2: tdi({{
+            if(FullSystem) {
+              int64_t val1 = Ra_sd;
+              int64_t val2 = simm;
+              //printf("Val 1 : 0x%016lx val2: 0x%016lx\n", val,val2);
+              if(((TO & 0x10) && (val1 < val2))                    ||
+                ((TO & 0x08) && (val1 > val2))                     ||
+                ((TO & 0x04) && (val1 == val2))                    ||
+                ((TO & 0x02) && ((uint64_t)val1 < (uint64_t)val2)) ||
+                ((TO & 0x01) && ((uint64_t)val1 > (uint64_t)val2))) {
+                fault= std::make_shared<ProgramTrapInterrupt>();
+              }
+            }
+        }});
+      }
 
     format IntImmCompOp {
         11: cmpi({{
@@ -406,7 +437,37 @@ decode PO default Unknown::unknown() {
         }
 
         format IntArithOp {
-            779: modsw({{
+
+            4: tw({{
+                if(FullSystem) {
+                  int32_t val1 = Ra_sw;
+                  int32_t val2 = Rb_sw;
+                  if(((TO & 0x10) && (val1 < val2))                    ||
+                    ((TO & 0x08) && (val1 > val2))                     ||
+                    ((TO & 0x04) && (val1 == val2))                    ||
+                    ((TO & 0x02) && ((uint32_t)val1 < (uint32_t)val2)) ||
+                    ((TO & 0x01) && ((uint32_t)val1 > (uint32_t)val2))) {
+                    fault= std::make_shared<ProgramTrapInterrupt>();
+                  }
+                }
+
+            }});
+
+            68: td ({{
+                if(FullSystem) {
+                  int64_t val1 = Ra_sd;
+                  int64_t val2 = Rb_sd;
+                  if(((TO & 0x10) && (val1 < val2))                    ||
+                    ((TO & 0x08) && (val1 > val2))                     ||
+                    ((TO & 0x04) && (val1 == val2))                    ||
+                    ((TO & 0x02) && ((uint64_t)val1 < (uint64_t)val2)) ||
+                    ((TO & 0x01) && ((uint64_t)val1 > (uint64_t)val2))) {
+                    fault= std::make_shared<ProgramTrapInterrupt>();
+                  }
+                }
+            }});
+
+                779: modsw({{
                 int64_t src1 = Ra_sw;
                 int64_t src2 = Rb_sw;
                 if ((src1 != INT32_MIN || src2 != -1) && src2 != 0) {

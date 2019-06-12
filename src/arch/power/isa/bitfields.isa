@@ -100,3 +100,6 @@ def bitfield BHRB          <20:11>;
 
 //L field for mtmsr and SLB move from entry VSID,ESID instructions.
 def bitfield L             <16>;
+
+//TO field for trap instructions
+def bitfield TO           <25:21>;

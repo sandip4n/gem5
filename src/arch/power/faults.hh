@@ -36,6 +36,7 @@
 #include "cpu/thread_context.hh"
 #include "sim/faults.hh"
 
+#define SRR1_TRAP_BIT     16
 #define SRR1_PRI_BIT      17
 #define SRR1_ILLEGAL_INSTR_BIT 18
 
@@ -203,6 +204,19 @@ class ProgramIllegalInterrupt : public ProgramInterrupt
                        StaticInst::nullStaticInstPtr)
     {
       ProgramInterrupt::invoke(tc, inst ,setBitMask(SRR1_ILLEGAL_INSTR_BIT));
+    }
+};
+
+class ProgramTrapInterrupt : public ProgramInterrupt
+{
+  public:
+    ProgramTrapInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                       StaticInst::nullStaticInstPtr)
+    {
+      ProgramInterrupt::invoke(tc, inst ,setBitMask(SRR1_TRAP_BIT));
     }
 };
 
