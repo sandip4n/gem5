@@ -68,7 +68,7 @@ const int NumIntArchRegs = 32;
 
 // CR, XER, LR, CTR, TAR, FPSCR, RSV, RSV-LEN, RSV-ADDR
 // and zero register, which doesn't actually exist but needs a number
-const int NumIntSpecialRegs = 88;
+const int NumIntSpecialRegs = 89;
 const int NumFloatArchRegs = 32;
 const int NumFloatSpecialRegs = 0;
 const int NumInternalProcRegs = 0;
@@ -189,7 +189,8 @@ enum MiscIntRegNums {
     INTREG_IC,
     INTREG_VTB,
     INTREG_HSPRG1,
-    INTREG_PIR
+    INTREG_PIR,
+    INTREG_DUMMY
 };
 
 } // namespace PowerISA
