@@ -116,6 +116,8 @@ class Interrupts : public SimObject
          interrupts[Decrementer] = 1;
        if (msr.ee)
        {
+         if (interrupts[2] == 1)
+           return true;
          for (int i = 0; i < NumInterruptLevels; i++) {
              if (interrupts[i] == 1)
                return true;
@@ -142,6 +144,11 @@ class Interrupts : public SimObject
             clear(DirHypDoorbell,0);
             return std::make_shared<HypDoorbellInterrupt>();
         }
+        else if (interrupts[DirectExt]){
+            clear(DirectExt,0);
+            return std::make_shared<DirectExternalInterrupt>();
+        }
+
         else return NoFault;
     }
 

@@ -698,6 +698,7 @@ decode PO default Unknown::unknown() {
                 0x378: mtmmcr0({{MMCR0 = Rs;}});
                 0x380: mtcfar({{ CFAR = Rs; }});
                 0x390: mttbl({{ TBL = Rs; }});
+                0x33c: mtspr({{ }});
                 0x3a0: mtamr({{AMR = Rs;}}, [ IsPrivileged ]);
                 0x3a1: mtiamr({{IAMR = Rs;}});
                 0x3a4: mtuamor({{UAMOR = Rs;}}, [ IsPrivileged ]);

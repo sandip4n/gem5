@@ -706,9 +706,12 @@ def makeLinuxPowerSystem(mem_mode, numCPUs=1, mdesc=None, cmdline=None):
     self.system_port = self.membus.slave
     self.intrctrl = IntrControl()
     if not cmdline:
-        cmdline = 'irqpoll lpj=1000000000'
+        cmdline = 'earlyprintk=ttyS0 console=ttyS0 irqpoll lpj=1000000000'
     self.boot_osflags = fillInCmdline(mdesc, cmdline)
-    self.kernel = binary('vmlinux')
+    #self.kernel = binary('vmlinux')
+    self.skiboot = binary('skiboot.elf');
+    self.kernel = binary('vmlinux');
+    self.initramfs = binary('initramfs.cpio');
     self.dtb_filename = binary('gem5-power9-fs.dtb')
     self.multi_thread = True;
     self._num_cpus = 2;

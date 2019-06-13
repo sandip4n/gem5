@@ -52,7 +52,8 @@ enum pcSet
     DataStoragePCSet = 0x300,
     InstrStoragePCSet = 0x400,
     PriDoorbellPCSet = 0xA00,
-    HypDoorbellPCSet = 0xe80
+    HypDoorbellPCSet = 0xe80,
+    DirectExternalPCSet = 0x500
 };
 
 extern long stdout_buf_addr;
@@ -150,6 +151,39 @@ class PowerInterrupt : public PowerFaultBase
       uint64_t hsrr1 = ((msr & unsetMask(31, 27)) & unsetMask(22,16)) |
                                                     BitMask;
       tc->setIntReg(INTREG_HSRR1, hsrr1);
+    }
+};
+
+class DirectExternalInterrupt : public PowerInterrupt
+{
+  public:
+    DirectExternalInterrupt()
+    {
+    }
+    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
+                        StaticInst::nullStaticInstPtr)
+    {
+      printf("Direct External Interrupt invoked\n");
+      // Refer Power ISA Manual v3.0B Book-III, section 6.5.7.1
+      Lpcr lpcr = tc->readIntReg(INTREG_LPCR);
+
+      if (lpcr.lpes){
+        tc->setIntReg(INTREG_SRR0 , tc->instAddr());
+        PowerInterrupt::updateSRR1(tc);
+        PowerInterrupt::updateMsr(tc);
+        Msr msr =  tc->readIntReg(INTREG_MSR);
+        msr.ri = 0;
+        tc->setIntReg(INTREG_MSR, msr);
+      }
+      else{
+        tc->setIntReg(INTREG_HSRR0 , tc->instAddr());
+        PowerInterrupt::updateHSRR1(tc);
+        PowerInterrupt::updateMsr(tc);
+        Msr msr =  tc->readIntReg(INTREG_MSR);
+        msr.hv = 1;
+        tc->setIntReg(INTREG_MSR, msr);
+      }
+      tc->pcState(DirectExternalPCSet);
     }
 };
 
