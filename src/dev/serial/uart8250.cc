@@ -80,6 +80,10 @@ Uart8250::scheduleIntr(Event *event)
     static const Tick interval = 225 * SimClock::Int::ns;
     DPRINTF(Uart, "Scheduling IER interrupt for %s, at cycle %lld\n",
             event->name(), curTick() + interval);
+    cout << "Scheduling IER interrupt for "
+         <<event->name()<< " at cycle" << curTick() + interval <<"\n";
+    //if (event->name().compare("TX.wrapped_function_event") == 0)
+    //  return;
     if (!event->scheduled())
         schedule(event, curTick() + interval);
     else
@@ -103,7 +107,7 @@ Uart8250::read(PacketPtr pkt)
     Addr daddr = pkt->getAddr() - pioAddr;
 
     DPRINTF(Uart, " read register %#x\n", daddr);
-
+    printf("read address 0x%lx\n", daddr);
     switch (daddr) {
         case 0x0:
             if (!(LCR & 0x80)) { // read byte
@@ -113,7 +117,7 @@ Uart8250::read(PacketPtr pkt)
                     pkt->set((uint8_t)0);
                     // A limited amount of these are ok.
                     DPRINTF(Uart, "empty read of RX register\n");
-                    printf("empty read of Rx register\n");
+                    //printf("empty read of Rx register\n");
                 }
                 status &= ~RX_INT;
                 platform->clearConsoleInt();
@@ -133,10 +137,13 @@ Uart8250::read(PacketPtr pkt)
             break;
         case 0x2: // Intr Identification Register (IIR)
             DPRINTF(Uart, "IIR Read, status = %#x\n", (uint32_t)status);
-            printf("IIR Read, status = %#x\n", (uint32_t)status);
-            if (status & RX_INT) /* Rx data interrupt has a higher priority */
-                pkt->set(IIR_RXID);
+            //printf("IIR Read, status = %#x\n", (uint32_t)status);
+            if (status & RX_INT){ /* Rx data interrupt has a higher priority */
+              //printf("RX data interrupt detected\n");
+              pkt->set(IIR_RXID);
+            }
             else if (status & TX_INT) {
+                //printf("Tx data interrupt detected\n");
                 pkt->set(IIR_TXID);
                 //Tx interrupts are cleared on IIR reads
                 status &= ~TX_INT;
@@ -202,7 +209,7 @@ Uart8250::write(PacketPtr pkt)
         case 0x1:
             if (!(LCR & 0x80)) { // Intr Enable Register(IER)
                 IER = pkt->get<uint8_t>();
-                if (UART_IER_THRI & IER & 0)
+                if (UART_IER_THRI & IER)
                 {
                     DPRINTF(Uart, "IER: IER_THRI set, scheduling TX intrrupt\n");
                     if (curTick() - lastTxInt > 225 * SimClock::Int::ns) {

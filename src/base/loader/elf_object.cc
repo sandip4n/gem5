@@ -121,9 +121,10 @@ ElfObject::tryFile(const std::string &fname, size_t len, uint8_t *data,
     } else if (ehdr.e_machine == EM_PPC64 &&
                ehdr.e_ident[EI_CLASS] == ELFCLASS64) {
         arch = Power;
-        if (ehdr.e_ident[EI_DATA] != ELFDATA2LSB) {
+        //if (ehdr.e_ident[EI_DATA] != ELFDATA2LSB) {
+        if (ehdr.e_ident[EI_DATA] != ELFDATA2MSB) {
             fatal("The binary you're trying to load is compiled for "
-                  "big endian Power.\ngem5 only supports little "
+                  "little endian Power.\ngem5 only supports big "
                   "endian Power. Please recompile your binary.\n");
         }
     } else if (ehdr.e_ident[EI_CLASS] == ELFCLASS64) {

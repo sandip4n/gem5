@@ -39,6 +39,13 @@
 
 #include "arch/power/linux/system.hh"
 
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <cstring>
+
 #include "arch/vtophys.hh"
 #include "base/loader/dtb_object.hh"
 #include "base/loader/object_file.hh"
@@ -75,7 +82,7 @@ LinuxPowerSystem::initState()
     bool kernel_has_fdt_support =
         kernelSymtab->findAddress("unflatten_device_tree", addr);
     bool dtb_file_specified = params()->dtb_filename != "";
-
+    kernel_has_fdt_support = true;
     if (kernel_has_fdt_support && dtb_file_specified) {
         // Kernel supports flattened device tree and dtb file specified.
         // Using Device Tree Blob to describe system configuration.
@@ -104,6 +111,56 @@ LinuxPowerSystem::initState()
         dtb_file->setTextBase(0x1800000 +loadAddrOffset);
         dtb_file->loadSections(physProxy);
         delete dtb_file;
+    }
+    if (kernel){
+        inform("Loading kernel: %s at address %#x\n",params()->kernel,
+                        0x20000000);
+        kernel->setTextBase(0x20000000);
+        kernel->loadSections(physProxy);
+
+    }
+    if (!params()->skiboot.empty()){
+        inform("Loading skiboot: %s at address %#x\n",params()->skiboot,
+                        0x0);
+        ObjectFile *skiboot_file = createObjectFile(params()->skiboot,true);
+        if (!skiboot_file){
+                fatal("Could not load skiboot\n");
+        }
+        skiboot_file->setTextBase(0x0);
+        skiboot_file->loadSections(physProxy);
+    }
+    if (!params()->initramfs.empty()){
+        inform("Loading initramfs: %s at address %#x\n",params()->initramfs,
+                        0x28000000);
+        int fd = open(params()->initramfs.c_str(), O_RDONLY);
+        if (fd < 0){
+                fatal("Couldn't open %s file\n",params()->initramfs);
+        }
+        off_t off = lseek(fd, 0, SEEK_END);
+        fatal_if(off < 0,
+                "Failed to determine size of the object file %s\n",
+                params()->initramfs);
+        auto len = static_cast<size_t>(off);
+
+        uint8_t *buffer = (uint8_t *)malloc(len + 1);
+        if (!buffer){
+                fatal("Malloc failed\n");
+        }
+        lseek(fd,0,SEEK_SET);
+        int sz = read(fd, buffer, len);
+        if (sz != len){
+                fatal("Reading the initramfs file"
+                        "failed len :: %d read :: %d\n",len,sz);
+        }
+        //buffer[len+1] = '\0';
+        //const uint8_t *blob = (uint8_t *)malloc(len + 1);
+        //strncpy()
+        // load the file in memory
+        //physProxy.memsetBlob(0x28000000,(const uint8_t *)buffer,len);
+        physProxy.writeBlobPhys(0x28000000, 0, buffer,len);
+        close(fd);
+
+
     }
 }
 

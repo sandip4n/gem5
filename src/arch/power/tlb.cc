@@ -36,6 +36,11 @@
  */
 #include "arch/power/tlb.hh"
 
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 #include <string>
 #include <vector>
 
@@ -74,7 +79,7 @@ SystemCallInterrupt::invoke(ThreadContext * tc, const StaticInstPtr &inst =
       PowerInterrupt::updateSRR1(tc);
       PowerInterrupt::updateMsr(tc);
       tc->pcState(SystemCallPCSet);
-      std::printf("System call number = %lu\n", tc->readIntReg(0));
+      //std::printf("System call number = %lu\n", tc->readIntReg(0));
       if (tc->readIntReg(0) == 4){
         stdout_buf_length = (int)tc->readIntReg(5);
         stdout_buf_addr = tc->readIntReg(4);
@@ -102,7 +107,9 @@ TLB::TLB(const Params *p)
     bool flag = false;
     while (getline(stream, addr_str)) {
         if (!flag){
-            if (addr_str.find("<log_store>:") != string::npos) {
+            if (addr_str.find("<log_store>:") != string::npos
+                || addr_str.find("<log_store.isra.1>:") != string::npos
+                || addr_str.find("<.log_store>:") != string::npos) {
                 flag = true;
             }
         }
@@ -396,6 +403,27 @@ TLB::translateAtomic(RequestPtr req, ThreadContext *tc, Mode mode)
         }
         Msr msr = tc->readIntReg(INTREG_MSR);
         if (mode == Execute){
+                //0x20000000
+           /* if (vaddr == 0x30005214){
+                int fd = open("device_tree.dtb", O_CREAT | O_WRONLY,0644);
+                //uint64_t i;
+                int index = 0;
+                //uint64_t start_addr = (uint64_t)tc->readIntReg(3);
+                std::printf("r3(device tree start) 0x%016lx\n",
+                                tc->readIntReg(4));
+                uint64_t start_addr = (uint64_t)tc->readIntReg(4); //- 0x1000;
+                uint8_t buf[10745];
+                for (index=0; index<10745; index++){
+                    buf[index] = (uint8_t)rwalk->readPhysMem(
+                                        start_addr + index,8);
+                    if (index < 8){
+                            std::printf("buf[0x%016lx] = %02x\n",
+                            start_addr + index,(unsigned int)buf[index]);
+                    }
+                }
+                int len = write(fd,buf,10745);
+                std::printf("Written to the device_tree.dtb :: len %d\n",len);
+            }*/
             if (msr.ir){
                 //printf("MSR: %lx\n",(uint64_t)msr);
                 Fault fault = rwalk->start(tc,req, mode);
@@ -415,6 +443,22 @@ TLB::translateAtomic(RequestPtr req, ThreadContext *tc, Mode mode)
                   std::printf("%lu [KERN LOG] %s\n",curTick(),buf);
                   std::fflush(stdout);
                 }
+                if (paddr == 0x30012fd4){
+                  int len = (int)tc->readIntReg(5);
+                  char buf[len];
+                  int i;
+                  char read;
+                  for (i=0; i<len; i++){
+                    read =  (char)rwalk->readPhysMem((tc->readIntReg(4)
+                                  & 0x0fffffffffffffff)+ i, 8);
+                    buf[i] = read;
+                  }
+                  buf[i] = '\0';
+                  //DPRINTF(TLB, "[KERN LOG] %s\n",buf);
+                  std::printf("%lu [OPAL LOG] %s\n",curTick(),buf);
+                  std::fflush(stdout);
+                }
+
                 return fault;
             }
             else{
@@ -438,6 +482,22 @@ TLB::translateAtomic(RequestPtr req, ThreadContext *tc, Mode mode)
                   std::printf("%lu [KERN LOG] %s\n",curTick(),buf);
                   std::fflush(stdout);
                 }
+                if (paddr == 0x30012fd4){
+                  int len = (int)tc->readIntReg(5);
+                  char buf[len];
+                  int i;
+                  char read;
+                  for (i=0; i<len; i++){
+                    read =  (char)rwalk->readPhysMem((tc->readIntReg(4)
+                                  & 0x0fffffffffffffff)+ i, 8);
+                    buf[i] = read;
+                  }
+                  buf[i] = '\0';
+                  //DPRINTF(TLB, "[KERN LOG] %s\n",buf);
+                  std::printf("%lu [OPAL LOG] %s\n",curTick(),buf);
+                  std::fflush(stdout);
+                }
+
                 return NoFault;
 
             }
