@@ -626,6 +626,7 @@ decode PO default Unknown::unknown() {
                 0x3a1: mfiamr({{Rt = IAMR;}});
                 0x3a4: mfuamor({{ Rt = UAMOR; }}, [ IsPrivileged ]);
                 0x3aa: mfamor({{Rt = AMOR;}});
+                0x3a9: mfspr({{ }});
                 0x3c5: mfhfscr({{Rt = HFSCR;}});
                 0x3c9: mflpcr({{Rt = LPCR;}});
                 0x3E8: mfpvr({{ Rt = PVR; }});

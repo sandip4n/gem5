@@ -87,7 +87,11 @@ PowerSystem::initState()
     tc->setIntReg(ArgumentReg0, 0x1800000);
     ThreadID tid = 1;
     ThreadContext *tc1 = threadContexts[tid];
-    tc1->pcState(0xc00000000000a840);
-    tc1->setIntReg(ArgumentReg0, 0x1);
+    tc1->pcState(0x10);
+    tc1->setIntReg(INTREG_PVR , 0x004e0200);
+    tc1->setIntReg(INTREG_MSR , msr);
+    tc1->setIntReg(ArgumentReg0, 0x1800000);
+    //tc1->pcState(0xc00000000000a840);
+    //tc1->setIntReg(ArgumentReg0, 0x1);
     tc1->setIntReg(INTREG_PIR,0x1);
 }
