@@ -294,7 +294,39 @@ decode PO default Unknown::unknown() {
 
         format StoreIndexOp {
             215: stbx({{ Mem_ub = Rs_ub; }});
+            694: stbcx({{
+                bool store_performed = false;
+                Mem_ub = Rs_ub;
+                if (Rsv) {
+                    if (RsvLen == 1) {
+                        if (RsvAddr == EA) {
+                            store_performed = true;
+                        }
+                    }
+                }
+                Xer xer = XER;
+                Cr cr = CR;
+                cr.cr0 = ((store_performed ? 0x2 : 0x0) | xer.so);
+                CR = cr;
+                Rsv = 0;
+            }});
             407: sthx({{ Mem_uh = Rs_uh; }});
+            726: sthcx({{
+                bool store_performed = false;
+                Mem_uh = Rs_uh;
+                if (Rsv) {
+                    if (RsvLen == 2) {
+                        if (RsvAddr == EA) {
+                            store_performed = true;
+                        }
+                    }
+                }
+                Xer xer = XER;
+                Cr cr = CR;
+                cr.cr0 = ((store_performed ? 0x2 : 0x0) | xer.so);
+                CR = cr;
+                Rsv = 0;
+            }});
             918: sthbrx({{ Mem_uh = swap_byte(Rs_uh); }});
             151: stwx({{ Mem_uw = Rs_uw; }});
             150: stwcx({{
@@ -315,6 +347,22 @@ decode PO default Unknown::unknown() {
             }});
             662: stwbrx({{ Mem_uw = swap_byte(Rs_uw); }});
             149: stdx({{ Mem = Rs }});
+            214: stdcx({{
+                bool store_performed = false;
+                Mem = Rs;
+                if (Rsv) {
+                    if (RsvLen == 8) {
+                        if (RsvAddr == EA) {
+                            store_performed = true;
+                        }
+                    }
+                }
+                Xer xer = XER;
+                Cr cr = CR;
+                cr.cr0 = ((store_performed ? 0x2 : 0x0) | xer.so);
+                CR = cr;
+                Rsv = 0;
+            }});
             660: stdbrx({{ Mem = swap_byte(Rs); }});
         }
 
