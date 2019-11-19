@@ -182,7 +182,7 @@ SyscallDesc PowerLinuxProcess::syscallDescs[] = {
     /* 82 */ SyscallDesc("reserved#82", unimplementedFunc),
     /* 83 */ SyscallDesc("symlink", unimplementedFunc),
     /* 84 */ SyscallDesc("unused#84", unimplementedFunc),
-    /* 85 */ SyscallDesc("readlink", unimplementedFunc),
+    /* 85 */ SyscallDesc("readlink", readlinkFunc),
     /* 86 */ SyscallDesc("uselib", unimplementedFunc),
     /* 87 */ SyscallDesc("swapon", gethostnameFunc),
     /* 88 */ SyscallDesc("reboot", unimplementedFunc),
