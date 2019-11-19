@@ -84,7 +84,7 @@ PowerProcess::initState()
 void
 PowerProcess::argsInit(int intSize, int pageSize)
 {
-    std::vector<AuxVector<uint32_t>> auxv;
+    std::vector<AuxVector<uint64_t>> auxv;
 
     string filename;
     if (argv.size() < 1)
@@ -99,11 +99,37 @@ PowerProcess::argsInit(int intSize, int pageSize)
     image.write(initVirtMem);
     interpImage.write(initVirtMem);
 
+    enum PowerCpuFeature {
+        Power_32 = ULL(1) << 31,            // Always set for powerpc64
+        Power_64 = ULL(1) << 30,            // Always set for powerpc64
+        Power_HAS_ALTIVEC = ULL(1) << 28,
+        Power_HAS_FPU = ULL(1) << 27,
+        Power_HAS_MMU = ULL(1) << 26,
+        Power_UNIFIED_CACHE = ULL(1) << 24,
+        Power_NO_TB = ULL(1) << 20,         // 601/403gx have no timebase
+        Power_POWER4 = ULL(1) << 19,        // POWER4 ISA 2.00
+        Power_POWER5 = ULL(1) << 18,        // POWER5 ISA 2.02
+        Power_POWER5_PLUS = ULL(1) << 17,   // POWER5+ ISA 2.03
+        Power_CELL_BE = ULL(1) << 16,       // CELL Broadband Engine
+        Power_BOOKE = ULL(1) << 15,         // ISA Category Embedded
+        Power_SMT = ULL(1) << 14,           // Simultaneous Multi-Threading
+        Power_ICACHE_SNOOP = ULL(1) << 13,
+        Power_ARCH_2_05 = ULL(1) << 12,     // ISA 2.05
+        Power_PA6T = ULL(1) << 11,          // PA Semi 6T Core
+        Power_HAS_DFP = ULL(1) << 10,       // Decimal FP Unit
+        Power_POWER6_EXT = ULL(1) << 9,     // P6 + mffgpr/mftgpr
+        Power_ARCH_2_06 = ULL(1) << 8,      // ISA 2.06
+        Power_HAS_VSX = ULL(1) << 7,        // P7 Vector Extension
+        Power_PSERIES_PERFMON_COMPAT = ULL(1) << 6,
+        Power_TRUE_LE = ULL(1) << 1,
+        Power_PPC_LE = ULL(1) << 0
+    };
+
     //Setup the auxilliary vectors. These will already have endian conversion.
     //Auxilliary vectors are loaded only for elf formatted executables.
     ElfObject * elfObject = dynamic_cast<ElfObject *>(objFile);
     if (elfObject) {
-        uint32_t features = 0;
+        uint64_t features = Power_32 | Power_64 | Power_PPC_LE;
 
         //Bits which describe the system hardware capabilities
         //XXX Figure out what these should be
@@ -138,6 +164,9 @@ PowerProcess::argsInit(int intSize, int pageSize)
         auxv.emplace_back(M5_AT_EXECFN, 0);
         //The string "v51" with unknown meaning
         auxv.emplace_back(M5_AT_PLATFORM, 0);
+        //The address of 16 bytes in the data section containing a random
+        //value; it is required for stack protection using a canary value.
+        auxv.emplace_back(M5_AT_RANDOM, objFile->entryPoint());
     }
 
     //Figure out how big the initial stack nedes to be
@@ -201,15 +230,15 @@ PowerProcess::argsInit(int intSize, int pageSize)
                 roundUp(memState->getStackSize(), pageSize));
 
     // map out initial stack contents
-    uint32_t sentry_base = memState->getStackBase() - sentry_size;
-    uint32_t aux_data_base = sentry_base - aux_data_size;
-    uint32_t env_data_base = aux_data_base - env_data_size;
-    uint32_t arg_data_base = env_data_base - arg_data_size;
-    uint32_t platform_base = arg_data_base - platform_size;
-    uint32_t auxv_array_base = platform_base - aux_array_size - aux_padding;
-    uint32_t envp_array_base = auxv_array_base - envp_array_size;
-    uint32_t argv_array_base = envp_array_base - argv_array_size;
-    uint32_t argc_base = argv_array_base - argc_size;
+    uint64_t sentry_base = memState->getStackBase() - sentry_size;
+    uint64_t aux_data_base = sentry_base - aux_data_size;
+    uint64_t env_data_base = aux_data_base - env_data_size;
+    uint64_t arg_data_base = env_data_base - arg_data_size;
+    uint64_t platform_base = arg_data_base - platform_size;
+    uint64_t auxv_array_base = platform_base - aux_array_size - aux_padding;
+    uint64_t envp_array_base = auxv_array_base - envp_array_size;
+    uint64_t argv_array_base = envp_array_base - argv_array_size;
+    uint64_t argc_base = argv_array_base - argc_size;
 
     DPRINTF(Stack, "The addresses of items on the initial stack:\n");
     DPRINTF(Stack, "0x%x - aux data\n", aux_data_base);
@@ -225,11 +254,11 @@ PowerProcess::argsInit(int intSize, int pageSize)
     // write contents to stack
 
     // figure out argc
-    uint32_t argc = argv.size();
-    uint32_t guestArgc = htobe(argc);
+    uint64_t argc = argv.size();
+    uint64_t guestArgc = htole(argc);
 
     //Write out the sentry void *
-    uint32_t sentry_NULL = 0;
+    uint64_t sentry_NULL = 0;
     initVirtMem.writeBlob(sentry_base, &sentry_NULL, sentry_size);
 
     //Fix up the aux vectors which point to other data
