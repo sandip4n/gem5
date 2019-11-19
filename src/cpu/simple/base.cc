@@ -484,8 +484,11 @@ BaseSimpleCPU::preExecute()
     SimpleExecContext &t_info = *threadInfo[curThread];
     SimpleThread* thread = t_info.thread;
 
+#if THE_ISA != POWER_ISA
     // maintain $r0 semantics
     thread->setIntReg(ZeroReg, 0);
+#endif // POWER_ISA
+
 #if THE_ISA == ALPHA_ISA
     thread->setFloatReg(ZeroReg, 0);
 #endif // ALPHA_ISA
