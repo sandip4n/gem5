@@ -42,7 +42,7 @@ class PowerLinux : public Linux
 {
   public:
 
-    static const ByteOrder byteOrder = BigEndianByteOrder;
+    static const ByteOrder byteOrder = LittleEndianByteOrder;
 
     typedef int32_t time_t;
 
