@@ -292,6 +292,7 @@ IntLogicOp::generateDisassembly(Addr pc, const SymbolTable *symtab) const
         printSecondSrc = false;
     } else if (!myMnemonic.compare("extsb") ||
                !myMnemonic.compare("extsh") ||
+               !myMnemonic.compare("extsw") ||
                !myMnemonic.compare("cntlzw")) {
         printSecondSrc = false;
     }
