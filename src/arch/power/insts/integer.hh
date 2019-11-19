@@ -429,6 +429,71 @@ class IntDispArithOp : public IntArithOp
 
 
 /**
+ * Class for integer compare operations.
+ */
+class IntCompOp : public IntOp
+{
+  protected:
+
+    uint32_t length;
+    uint32_t field;
+
+    /// Constructor
+    IntCompOp(const char *mnem, MachInst _machInst, OpClass __opClass)
+      : IntOp(mnem, _machInst, __opClass),
+        length(machInst.l),
+        field(machInst.bf)
+    {
+    }
+
+    std::string generateDisassembly(
+            Addr pc, const SymbolTable *symtab) const override;
+};
+
+
+/**
+ * Class for integer immediate compare operations.
+ */
+class IntImmCompOp : public IntCompOp
+{
+  protected:
+
+    int32_t simm;
+
+    /// Constructor
+    IntImmCompOp(const char *mnem, MachInst _machInst, OpClass __opClass)
+      : IntCompOp(mnem, _machInst, __opClass),
+        simm((int16_t)machInst.si)
+    {
+    }
+
+    std::string generateDisassembly(
+            Addr pc, const SymbolTable *symtab) const override;
+};
+
+
+/**
+ * Class for integer immediate compare logical operations.
+ */
+class IntImmCompLogicOp : public IntCompOp
+{
+  protected:
+
+    uint32_t uimm;
+
+    /// Constructor
+    IntImmCompLogicOp(const char *mnem, MachInst _machInst, OpClass __opClass)
+      : IntCompOp(mnem, _machInst, __opClass),
+        uimm(machInst.ui)
+    {
+    }
+
+    std::string generateDisassembly(
+            Addr pc, const SymbolTable *symtab) const override;
+};
+
+
+/**
  * Class for integer operations with a shift.
  */
 class IntShiftOp : public IntOp
