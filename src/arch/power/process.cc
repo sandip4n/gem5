@@ -311,12 +311,12 @@ PowerProcess::getSyscallArg(ThreadContext *tc, int &i)
 void
 PowerProcess::setSyscallReturn(ThreadContext *tc, SyscallReturn sysret)
 {
-    Cr cr = tc->readIntReg(INTREG_CR);
+    Cr cr = tc->readMiscReg(MISCREG_CR);
     if (sysret.successful()) {
         cr.cr0.so = 0;
     } else {
         cr.cr0.so = 1;
     }
-    tc->setIntReg(INTREG_CR, cr);
+    tc->setMiscReg(MISCREG_CR, cr);
     tc->setIntReg(ReturnValueReg, sysret.encodedValue());
 }

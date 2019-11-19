@@ -37,10 +37,22 @@ namespace PowerISA
 {
 
 enum MiscRegIndex {
-    NUM_MISCREGS = 0
+    MISCREG_CR,
+    MISCREG_FPSCR,
+    MISCREG_XER,
+    MISCREG_LR,
+    MISCREG_CTR,
+    MISCREG_TAR,
+    NUM_MISCREGS
 };
 
 const char * const miscRegName[NUM_MISCREGS] = {
+    "CR",
+    "FPSCR",
+    "XER",
+    "LR",
+    "CTR",
+    "TAR"
 };
 
 BitUnion32(Cr)
