@@ -3,6 +3,7 @@
  * Copyright (c) 2002-2005 The Regents of The University of Michigan
  * Copyright (c) 2007-2008 The Florida State University
  * Copyright (c) 2009 The University of Edinburgh
+ * Copyright (c) 2019 IBM Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,6 +33,7 @@
  *          Stephen Hines
  *          Timothy M. Jones
  *          Boris Shingarov
+ *          Sandipan Das
  */
 
 #ifndef __ARCH_POWER_REMOTE_GDB_HH__

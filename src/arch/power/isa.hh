@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2009 The Regents of The University of Michigan
  * Copyright (c) 2009 The University of Edinburgh
+ * Copyright (c) 2019 IBM Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -28,6 +29,7 @@
  *
  * Authors: Gabe Black
  *          Timothy M. Jones
+ *          Sandipan Das
  */
 
 #ifndef __ARCH_POWER_ISA_HH__

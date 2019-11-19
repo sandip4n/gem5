@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2009 The University of Edinburgh
+ * Copyright (c) 2019 IBM Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -26,6 +27,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  * Authors: Timothy M. Jones
+ *          Sandipan Das
  */
 
 #include "arch/power/insts/mem.hh"
