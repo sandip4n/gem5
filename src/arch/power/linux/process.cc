@@ -136,7 +136,7 @@ SyscallDesc PowerLinuxProcess::syscallDescs[] = {
     /* 30 */ SyscallDesc("utime", unimplementedFunc),
     /* 31 */ SyscallDesc("stty", unimplementedFunc),
     /* 32 */ SyscallDesc("gtty", unimplementedFunc),
-    /* 33 */ SyscallDesc("access", unimplementedFunc),
+    /* 33 */ SyscallDesc("access", accessFunc),
     /* 34 */ SyscallDesc("nice", unimplementedFunc),
     /* 35 */ SyscallDesc("ftime", unimplementedFunc),
     /* 36 */ SyscallDesc("sync", unimplementedFunc),
