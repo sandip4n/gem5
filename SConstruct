@@ -387,6 +387,8 @@ if main['GCC'] or main['CLANG']:
     main.Append(CCFLAGS=['-Werror',
                          '-Wno-error=deprecated-declarations',
                          '-Wno-error=deprecated',
+                         '-Wno-error=deprecated-copy',
+                         '-Wno-error=address-of-packed-member',
                         ])
 else:
     error('\n'.join(
