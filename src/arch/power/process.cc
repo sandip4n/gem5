@@ -304,6 +304,23 @@ PowerProcess::argsInit(int intSize, int pageSize)
     tc->setIntReg(StackPointerReg, stack_min);
 
     if (GuestByteOrder == BigEndianByteOrder) {
+        // Fix symbol table entries as they would otherwise point to the
+        // function descriptor rather than the actual entry point address
+        auto symbolMap = debugSymbolTable->getSymbolTable();
+        auto *symbolTable = new SymbolTable;
+
+        for (auto it = symbolMap.begin(); it != symbolMap.end(); ++it) {
+            Addr entry;
+            if (initVirtMem.tryReadBlob(it->second, &entry, sizeof(Addr))) {
+                symbolTable->insert(betoh(entry), it->first);
+            } else {
+                symbolTable->insert(it->second, it->first);
+            }
+        }
+
+        delete debugSymbolTable;
+        debugSymbolTable = symbolTable;
+
         // Fix entry point address and the base TOC pointer by looking the
         // the function descriptor in the OPD section
         Addr entryPoint, tocBase;
