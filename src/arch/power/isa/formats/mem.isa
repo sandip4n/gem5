@@ -75,7 +75,9 @@ def template LoadExecute {{
         %(ea_code)s;
 
         if (fault == NoFault) {
-            fault = readMemAtomicLE(xc, traceData, EA, Mem, memAccessFlags);
+            fault = (GuestByteOrder == BigEndianByteOrder) ?
+                    readMemAtomicBE(xc, traceData, EA, Mem, memAccessFlags) :
+                    readMemAtomicLE(xc, traceData, EA, Mem, memAccessFlags);
             %(memacc_code)s;
         }
 
@@ -121,7 +123,10 @@ def template LoadCompleteAcc {{
 
         EA = pkt->req->getVaddr();
 
-        getMemLE(pkt, Mem, traceData);
+        if (GuestByteOrder == BigEndianByteOrder)
+            getMemBE(pkt, Mem, traceData);
+        else
+            getMemLE(pkt, Mem, traceData);
 
         if (fault == NoFault) {
             %(memacc_code)s;
@@ -152,8 +157,11 @@ def template StoreExecute {{
         }
 
         if (fault == NoFault) {
-            fault = writeMemAtomicLE(xc, traceData, Mem, EA, memAccessFlags,
-                    NULL);
+            fault = (GuestByteOrder == BigEndianByteOrder) ?
+                     writeMemAtomicBE(xc, traceData, Mem, EA, memAccessFlags,
+                                      NULL) :
+                     writeMemAtomicLE(xc, traceData, Mem, EA, memAccessFlags,
+                                      NULL);
         }
 
         if (fault == NoFault) {
@@ -181,8 +189,11 @@ def template StoreInitiateAcc {{
         }
 
         if (fault == NoFault) {
-            fault = writeMemTimingLE(xc, traceData, Mem, EA, memAccessFlags,
-                    NULL);
+            fault = (GuestByteOrder == BigEndianByteOrder) ?
+                     writeMemTimingBE(xc, traceData, Mem, EA, memAccessFlags,
+                                      NULL) :
+                     writeMemTimingLE(xc, traceData, Mem, EA, memAccessFlags,
+                                      NULL);
         }
 
         // Need to write back any potential address register update

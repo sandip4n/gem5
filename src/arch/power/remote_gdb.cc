@@ -184,17 +184,17 @@ RemoteGDB::PowerGdbRegCache::getRegs(ThreadContext *context)
     // where only CR, FPSCR, XER are 32-bit each and the rest are 64-bit
 
     for (int i = 0; i < NumIntArchRegs; i++)
-        r.gpr[i] = htole(context->readIntReg(i));
+        r.gpr[i] = htog(context->readIntReg(i), GuestByteOrder);
 
     for (int i = 0; i < NumFloatArchRegs; i++)
         r.fpr[i] = context->readFloatReg(i);
 
-    r.pc = htole(context->pcState().pc());
+    r.pc = htog(context->pcState().pc(), GuestByteOrder);
     r.msr = 0; // Is MSR modeled?
-    r.cr = htole((uint32_t)context->readIntReg(MISCREG_CR));
-    r.lr = htole(context->readIntReg(MISCREG_LR));
-    r.ctr = htole(context->readIntReg(MISCREG_CTR));
-    r.xer = htole((uint32_t)context->readIntReg(MISCREG_XER));
+    r.cr = htog((uint32_t)context->readIntReg(MISCREG_CR), GuestByteOrder);
+    r.lr = htog(context->readIntReg(MISCREG_LR), GuestByteOrder);
+    r.ctr = htog(context->readIntReg(MISCREG_CTR), GuestByteOrder);
+    r.xer = htog((uint32_t)context->readIntReg(MISCREG_XER), GuestByteOrder);
 }
 
 void
@@ -203,17 +203,17 @@ RemoteGDB::PowerGdbRegCache::setRegs(ThreadContext *context) const
     DPRINTF(GDBAcc, "setRegs in remotegdb \n");
 
     for (int i = 0; i < NumIntArchRegs; i++)
-        context->setIntReg(i, letoh(r.gpr[i]));
+        context->setIntReg(i, gtoh(r.gpr[i], GuestByteOrder));
 
     for (int i = 0; i < NumFloatArchRegs; i++)
         context->setFloatReg(i, r.fpr[i]);
 
-    context->pcState(letoh(r.pc));
+    context->pcState(gtoh(r.pc, GuestByteOrder));
     // Is MSR modeled?
-    context->setIntReg(MISCREG_CR, letoh(r.cr));
-    context->setIntReg(MISCREG_LR, letoh(r.lr));
-    context->setIntReg(MISCREG_CTR, letoh(r.ctr));
-    context->setIntReg(MISCREG_XER, letoh(r.xer));
+    context->setIntReg(MISCREG_CR, gtoh(r.cr, GuestByteOrder));
+    context->setIntReg(MISCREG_LR, gtoh(r.lr, GuestByteOrder));
+    context->setIntReg(MISCREG_CTR, gtoh(r.ctr, GuestByteOrder));
+    context->setIntReg(MISCREG_XER, gtoh(r.xer, GuestByteOrder));
 }
 
 BaseGdbRegCache*

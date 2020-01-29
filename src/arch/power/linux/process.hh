@@ -39,7 +39,8 @@
 class PowerLinuxProcess : public PowerProcess
 {
   public:
-    PowerLinuxProcess(ProcessParams * params, ObjectFile *objFile);
+    PowerLinuxProcess(ProcessParams * params, ObjectFile *objFile,
+                      ByteOrder guestByteOrder);
 
     virtual SyscallDesc* getDesc(int callnum);
 

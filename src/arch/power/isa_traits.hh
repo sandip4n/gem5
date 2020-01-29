@@ -42,7 +42,7 @@
 namespace PowerISA
 {
 
-const ByteOrder GuestByteOrder = LittleEndianByteOrder;
+extern ByteOrder GuestByteOrder;
 
 StaticInstPtr decodeInst(ExtMachInst);
 

@@ -55,12 +55,15 @@ class PowerLinuxObjectFileLoader : public Process::Loader
 {
   public:
     Process *
-    load(ProcessParams *params, ObjectFile *obj_file) override
+    load(ProcessParams *params, ObjectFile *objFile) override
     {
-        if (obj_file->getArch() != ObjectFile::Power)
+        auto arch = objFile->getArch();
+
+        if (arch != ObjectFile::PowerBigEndian &&
+            arch != ObjectFile::PowerLittleEndian)
             return nullptr;
 
-        auto opsys = obj_file->getOpSys();
+        auto opsys = objFile->getOpSys();
 
         if (opsys == ObjectFile::UnknownOpSys) {
             warn("Unknown operating system; assuming Linux.");
@@ -70,7 +73,10 @@ class PowerLinuxObjectFileLoader : public Process::Loader
         if (opsys != ObjectFile::Linux)
             return nullptr;
 
-        return new PowerLinuxProcess(params, obj_file);
+        auto byteOrder = (arch == ObjectFile::PowerBigEndian) ?
+                          BigEndianByteOrder : LittleEndianByteOrder;
+
+        return new PowerLinuxProcess(params, objFile, byteOrder);
     }
 };
 
@@ -447,8 +453,9 @@ SyscallDesc PowerLinuxProcess::syscallDescs[] = {
 };
 
 PowerLinuxProcess::PowerLinuxProcess(ProcessParams * params,
-        ObjectFile *objFile)
-    : PowerProcess(params, objFile),
+                                     ObjectFile *objFile,
+                                     ByteOrder guestByteOrder)
+    : PowerProcess(params, objFile, guestByteOrder),
       Num_Syscall_Descs(sizeof(syscallDescs) / sizeof(SyscallDesc))
 {
 }

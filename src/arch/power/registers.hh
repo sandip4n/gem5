@@ -89,6 +89,7 @@ const int ArgumentReg3 = 6;
 const int ArgumentReg4 = 7;
 const int FramePointerReg = 31;
 const int StackPointerReg = 1;
+const int TocPointerReg = 2;
 
 // There isn't one in Power, but we need to define one somewhere
 const int ZeroReg = NumIntRegs - 1;

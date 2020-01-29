@@ -67,7 +67,7 @@ class Decoder
     void
     moreBytes(const PCState &pc, Addr fetchPC, MachInst inst)
     {
-        emi = letoh(inst);
+        emi = gtoh(inst, GuestByteOrder);
         instDone = true;
     }
 

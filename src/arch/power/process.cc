@@ -49,7 +49,10 @@
 using namespace std;
 using namespace PowerISA;
 
-PowerProcess::PowerProcess(ProcessParams *params, ObjectFile *objFile)
+ByteOrder PowerISA::GuestByteOrder = LittleEndianByteOrder;
+
+PowerProcess::PowerProcess(ProcessParams *params, ObjectFile *objFile,
+                           ByteOrder guestByteOrder)
     : Process(params,
               new EmulationPageTable(params->name, params->pid, PageBytes),
               objFile)
@@ -71,6 +74,8 @@ PowerProcess::PowerProcess(ProcessParams *params, ObjectFile *objFile)
 
     memState = make_shared<MemState>(brk_point, stack_base, max_stack_size,
                                      next_thread_stack_base, mmap_end);
+
+    GuestByteOrder = guestByteOrder;
 }
 
 void
@@ -129,7 +134,10 @@ PowerProcess::argsInit(int intSize, int pageSize)
     //Auxilliary vectors are loaded only for elf formatted executables.
     ElfObject * elfObject = dynamic_cast<ElfObject *>(objFile);
     if (elfObject) {
-        uint64_t features = Power_32 | Power_64 | Power_PPC_LE;
+        uint64_t features = Power_32 | Power_64;
+
+        if (GuestByteOrder == LittleEndianByteOrder)
+            features |= Power_PPC_LE;
 
         //Bits which describe the system hardware capabilities
         //XXX Figure out what these should be
@@ -255,7 +263,7 @@ PowerProcess::argsInit(int intSize, int pageSize)
 
     // figure out argc
     uint64_t argc = argv.size();
-    uint64_t guestArgc = htole(argc);
+    uint64_t guestArgc = htog(argc, GuestByteOrder);
 
     //Write out the sentry void *
     uint64_t sentry_NULL = 0;
@@ -284,9 +292,9 @@ PowerProcess::argsInit(int intSize, int pageSize)
     auxv_array_end += sizeof(zero);
 
     copyStringArray(envp, envp_array_base, env_data_base,
-                    LittleEndianByteOrder, initVirtMem);
+                    GuestByteOrder, initVirtMem);
     copyStringArray(argv, argv_array_base, arg_data_base,
-                    LittleEndianByteOrder, initVirtMem);
+                    GuestByteOrder, initVirtMem);
 
     initVirtMem.writeBlob(argc_base, &guestArgc, intSize);
 
@@ -295,7 +303,23 @@ PowerProcess::argsInit(int intSize, int pageSize)
     //Set the stack pointer register
     tc->setIntReg(StackPointerReg, stack_min);
 
-    tc->pcState(getStartPC());
+    if (GuestByteOrder == BigEndianByteOrder) {
+        // Fix entry point address and the base TOC pointer by looking the
+        // the function descriptor in the OPD section
+        Addr entryPoint, tocBase;
+
+        // The first doubleword of the descriptor contains the address of the
+        // entry point of the function
+        initVirtMem.readBlob(getStartPC(), &entryPoint, sizeof(Addr));
+        tc->pcState(betoh(entryPoint));
+
+        // The second doubleword of the descriptor contains the TOC base
+        // address for the function
+        initVirtMem.readBlob(getStartPC() + 8, &tocBase, sizeof(Addr));
+        tc->setIntReg(TocPointerReg, betoh(tocBase));
+    } else {
+        tc->pcState(getStartPC());
+    }
 
     //Align the "stack_min" to a page boundary.
     memState->setStackMin(roundDown(stack_min, pageSize));

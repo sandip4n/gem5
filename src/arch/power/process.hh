@@ -44,7 +44,8 @@ class ObjectFile;
 class PowerProcess : public Process
 {
   protected:
-    PowerProcess(ProcessParams * params, ObjectFile *objFile);
+    PowerProcess(ProcessParams * params, ObjectFile *objFile,
+                 ByteOrder guestByteOrder);
 
     void initState();
 
