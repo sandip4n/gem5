@@ -189,12 +189,15 @@ ElfObject::determineArch()
     } else if (emach == EM_RISCV) {
         arch = (eclass == ELFCLASS64) ? Riscv64 : Riscv32;
     } else if (emach == EM_PPC && eclass == ELFCLASS32) {
-        fatal("The binary you're trying to load is compiled for 32-bit "
-              "Power.\ngem5 only supports 64-bit Power. Please "
-              "recompile your binary.\n");
+        arch = Power32BE;
+        if (edata != ELFDATA2MSB) {
+            fatal("The binary you're trying to load is compiled for 32-bit "
+                  "little endian Power.\ngem5 only supports 32-bit big "
+                  "endian and 64-bit big and little endian Power. "
+                  "Please recompile your binary.\n");
+        }
     } else if (emach == EM_PPC64 && eclass == ELFCLASS64) {
-        arch = (ehdr.e_ident[EI_DATA] == ELFDATA2MSB) ? PowerBigEndian :
-                                                        PowerLittleEndian;
+        arch = (edata == ELFDATA2MSB) ? Power64BE : Power64LE;
     } else if (eclass == ELFCLASS64) {
         // Since we don't know how to check for alpha right now, we'll
         // just assume if it wasn't something else and it's 64 bit, that's

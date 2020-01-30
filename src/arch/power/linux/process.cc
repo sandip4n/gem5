@@ -59,8 +59,9 @@ class PowerLinuxObjectFileLoader : public Process::Loader
     {
         auto arch = objFile->getArch();
 
-        if (arch != ObjectFile::PowerBigEndian &&
-            arch != ObjectFile::PowerLittleEndian)
+        if (arch != ObjectFile::Power32BE &&
+            arch != ObjectFile::Power64BE &&
+            arch != ObjectFile::Power64LE)
             return nullptr;
 
         auto opsys = objFile->getOpSys();
@@ -73,10 +74,12 @@ class PowerLinuxObjectFileLoader : public Process::Loader
         if (opsys != ObjectFile::Linux)
             return nullptr;
 
-        auto byteOrder = (arch == ObjectFile::PowerBigEndian) ?
+        auto machineBytes = (arch == ObjectFile::Power32BE) ? 4 : 8;
+        auto guestByteOrder = (arch != ObjectFile::Power64LE) ?
                           BigEndianByteOrder : LittleEndianByteOrder;
 
-        return new PowerLinuxProcess(params, objFile, byteOrder);
+        return new PowerLinuxProcess(params, objFile, machineBytes,
+                                     guestByteOrder);
     }
 };
 
@@ -453,17 +456,17 @@ SyscallDesc PowerLinuxProcess::syscallDescs[] = {
 };
 
 PowerLinuxProcess::PowerLinuxProcess(ProcessParams * params,
-                                     ObjectFile *objFile,
+                                     ObjectFile *objFile, int machineBytes,
                                      ByteOrder guestByteOrder)
-    : PowerProcess(params, objFile, guestByteOrder),
-      Num_Syscall_Descs(sizeof(syscallDescs) / sizeof(SyscallDesc))
+    : PowerProcess(params, objFile, machineBytes, guestByteOrder),
+      NumSyscallDescs(sizeof(syscallDescs) / sizeof(SyscallDesc))
 {
 }
 
 SyscallDesc*
 PowerLinuxProcess::getDesc(int callnum)
 {
-    if (callnum < 0 || callnum > Num_Syscall_Descs)
+    if (callnum < 0 || callnum > NumSyscallDescs)
         return NULL;
 
     return &syscallDescs[callnum];

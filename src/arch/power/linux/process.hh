@@ -40,7 +40,7 @@ class PowerLinuxProcess : public PowerProcess
 {
   public:
     PowerLinuxProcess(ProcessParams * params, ObjectFile *objFile,
-                      ByteOrder guestByteOrder);
+                      int machineBytes, ByteOrder guestByteOrder);
 
     virtual SyscallDesc* getDesc(int callnum);
 
@@ -55,7 +55,7 @@ class PowerLinuxProcess : public PowerProcess
     /// Array of syscall descriptors, indexed by call number.
     static SyscallDesc syscallDescs[];
 
-    const int Num_Syscall_Descs;
+    const int NumSyscallDescs;
 };
 
 #endif // __POWER_LINUX_PROCESS_HH__

@@ -57,13 +57,18 @@ PCDependentDisassembly::disassemble(Addr pc, const SymbolTable *symtab) const
 
 
 PowerISA::PCState
-BranchOp::branchTarget(const PowerISA::PCState &pc) const
+BranchOp::branchTarget(ThreadContext *tc) const
 {
+    Msr msr = tc->readMiscReg(MISCREG_MSR);
+    Addr addr;
+
     if (aaSet) {
-        return disp;
+        addr = disp;
     } else {
-        return pc.pc() + disp;
+        addr = tc->pcState().pc() + disp;
     }
+
+    return addr & ((!msr.sf) ? UINT_MAX : ULONG_MAX);
 }
 
 
@@ -98,13 +103,18 @@ BranchOp::generateDisassembly(Addr pc, const SymbolTable *symtab) const
 
 
 PowerISA::PCState
-BranchDispCondOp::branchTarget(const PowerISA::PCState &pc) const
+BranchDispCondOp::branchTarget(ThreadContext *tc) const
 {
+    Msr msr = tc->readMiscReg(MISCREG_MSR);
+    Addr addr;
+
     if (aaSet) {
-        return disp;
+        addr = disp;
     } else {
-        return pc.pc() + disp;
+        addr = tc->pcState().pc() + disp;
     }
+
+    return addr & ((!msr.sf) ? UINT_MAX : ULONG_MAX);
 }
 
 
@@ -144,8 +154,9 @@ BranchDispCondOp::generateDisassembly(Addr pc, const SymbolTable *symtab) const
 PowerISA::PCState
 BranchRegCondOp::branchTarget(ThreadContext *tc) const
 {
+    Msr msr = tc->readMiscReg(MISCREG_MSR);
     Addr addr = tc->readIntReg(_srcRegIdx[_numSrcRegs - 1].index());
-    return addr & -4ULL;
+    return (addr & ((!msr.sf) ? UINT_MAX : ULONG_MAX)) & -4ULL;
 }
 
 

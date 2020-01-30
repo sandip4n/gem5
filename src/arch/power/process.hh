@@ -44,17 +44,21 @@ class ObjectFile;
 class PowerProcess : public Process
 {
   protected:
-    PowerProcess(ProcessParams * params, ObjectFile *objFile,
+    PowerProcess(ProcessParams * params, ObjectFile *objFile, int machineBytes,
                  ByteOrder guestByteOrder);
 
     void initState();
 
   public:
-    void argsInit(int intSize, int pageSize);
+    void argsInit();
     RegVal getSyscallArg(ThreadContext *tc, int &i);
     /// Explicitly import the otherwise hidden getSyscallArg
     using Process::getSyscallArg;
     void setSyscallReturn(ThreadContext *tc, SyscallReturn return_value);
+
+  private:
+    void argsInit32();
+    void argsInit64();
 };
 
 #endif // __POWER_PROCESS_HH__

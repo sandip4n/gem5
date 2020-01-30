@@ -57,8 +57,9 @@ class ObjectFile : public ImageFile
         Arm64,
         Arm,
         Thumb,
-        PowerBigEndian,
-        PowerLittleEndian,
+        Power32BE,
+        Power64BE,
+        Power64LE,
         Riscv64,
         Riscv32
     };
