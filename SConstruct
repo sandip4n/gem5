@@ -372,6 +372,9 @@ if main['GCC'] or main['CLANG']:
                          '-Wno-cast-function-type',
                          '-Wno-error=class-memaccess',
                          '-Wno-error=catch-value',
+                         '-Wno-error=deprecated-copy',
+                         '-Wno-error=address-of-packed-member',
+                         '-Wno-error=array-bounds',
                         ])
 else:
     print(termcap.Yellow + termcap.Bold + 'Error' + termcap.Normal, end=' ')
