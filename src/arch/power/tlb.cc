@@ -102,7 +102,7 @@ TLB::TLB(const Params *p)
     smallPages = 0;
     rwalk = p->walker;
     ifstream stream;
-    stream.open("dist/m5/system/binaries/objdump");
+    stream.open("dist/m5/system/binaries/objdump_vmlinux");
     string addr_str;
     bool flag = false;
     while (getline(stream, addr_str)) {
