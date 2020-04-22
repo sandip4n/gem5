@@ -107,7 +107,7 @@ class TLB : public BaseTLB
     PowerISA::PTE *table;       // the Page Table
     int size;                   // TLB Size
     int nlu;                    // not last used entry (for replacement)
-    uint64_t printk_debug;      // Address to probe for the debug;
+
     void
     nextnlu()
     {
@@ -181,6 +181,14 @@ class TLB : public BaseTLB
 
     void regStats() override;
     BaseMasterPort *getMasterPort() override;
+
+  private:
+    uint64_t kernConsoleSnoopAddr;
+    uint64_t opalConsoleSnoopAddr;
+
+    void initConsoleSnoop();
+    void trySnoopKernConsole(uint64_t paddr, ThreadContext *tc);
+    void trySnoopOpalConsole(uint64_t paddr, ThreadContext *tc);
 };
 
 } // namespace PowerISA
