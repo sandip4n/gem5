@@ -171,49 +171,49 @@ TLB::initConsoleSnoop(void)
 void
 TLB::trySnoopKernConsole(uint64_t paddr, ThreadContext *tc)
 {
-    uint64_t addr;
-    int len, i;
-    char *buf;
-
-    if (paddr != kernConsoleSnoopAddr) {
-        return;
-    }
-
-    len = (int) tc->readIntReg(5);
-    buf = new char[len + 1];
-    addr = (uint64_t) tc->readIntReg(4) & (-1ULL >> 4);
-
-    for (i = 0; i < len; i++) {
-        buf[i] = (char) rwalk->readPhysMem(addr + i, 8);
-    }
-
-    buf[i] = '\0';
-    printf("%lu [KERN LOG] %s\n", curTick(), buf);
-    delete buf;
+//    uint64_t addr;
+//    int len, i;
+//    char *buf;
+//
+//    if (paddr != kernConsoleSnoopAddr) {
+//        return;
+//    }
+//
+//    len = (int) tc->readIntReg(5);
+//    buf = new char[len + 1];
+//    addr = (uint64_t) tc->readIntReg(4) & (-1ULL >> 4);
+//
+//    for (i = 0; i < len; i++) {
+//        buf[i] = (char) rwalk->readPhysMem(addr + i, 8);
+//    }
+//
+//    buf[i] = '\0';
+//    printf("%lu [KERN LOG] %s\n", curTick(), buf);
+//    delete buf;
 }
 
 void
 TLB::trySnoopOpalConsole(uint64_t paddr, ThreadContext *tc)
 {
-    uint64_t addr;
-    int len, i;
-    char *buf;
-
-    if (paddr != opalConsoleSnoopAddr) {
-        return;
-    }
-
-    len = (int) tc->readIntReg(5);
-    buf = new char[len + 1];
-    addr = (uint64_t) tc->readIntReg(4) & (-1ULL >> 4);
-
-    for (i = 0; i < len; i++) {
-        buf[i] = (char) rwalk->readPhysMem(addr + i, 8);
-    }
-
-    buf[i] = '\0';
-    printf("%lu [OPAL LOG] %s\n", curTick(), buf);
-    delete buf;
+//    uint64_t addr;
+//    int len, i;
+//    char *buf;
+//
+//    if (paddr != opalConsoleSnoopAddr) {
+//        return;
+//    }
+//
+//    len = (int) tc->readIntReg(5);
+//    buf = new char[len + 1];
+//    addr = (uint64_t) tc->readIntReg(4) & (-1ULL >> 4);
+//
+//    for (i = 0; i < len; i++) {
+//        buf[i] = (char) rwalk->readPhysMem(addr + i, 8);
+//    }
+//
+//    buf[i] = '\0';
+//    printf("%lu [OPAL LOG] %s\n", curTick(), buf);
+//    delete buf;
 }
 
 TLB::TLB(const Params *p)
