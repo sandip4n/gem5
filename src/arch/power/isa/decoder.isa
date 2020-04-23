@@ -38,6 +38,46 @@
 //
 decode PO default Unknown::unknown() {
 
+    // Simulation platform operations
+    0: decode PCODE {
+        format MiscOp {
+            962224: sim({{
+                ThreadContext *tc = xc->tcBase();
+                uint64_t cmd  = tc->readIntReg(3);
+                uint64_t arg1 M5_VAR_USED = tc->readIntReg(4);
+                uint64_t arg2 M5_VAR_USED = tc->readIntReg(5);
+                uint64_t arg3 M5_VAR_USED = tc->readIntReg(6);
+                uint64_t arg4 M5_VAR_USED = tc->readIntReg(7);
+
+                switch (cmd) {
+                    case 0: /* SIM_WRITE_CONSOLE_CODE */
+                        for (int i = 0; i < arg2; i++) {
+                            char ch;
+                            fault = readMemAtomic(xc, NULL, arg1 + i, ch, 0);
+                            if (fault == NoFault)
+                                putchar(ch);
+                        }
+                        break;
+                    case 1: /* SIM_EXIT_CODE */
+                        exitSimLoop("guest requested exit",
+                                    0, curTick(), 0, true);
+                        break;
+                    case 4: /* SIM_CPU_RESET_CODE */
+                        tc->pcState(0x100);
+                        break;
+                    case 5: /* SIM_CPU_STATE_CODE */
+                        switch (arg1) {
+                            case 0: /* SIM_CPU_SRESET */
+                                BaseCPU *cpu = tc->getCpuPtr();
+                                cpu->getContext(arg2)->pcState(0x100);
+                                break;
+                        }
+                        break;
+                }
+            }});
+        }
+    }
+
     // Unconditionally branch to a PC-relative or absoulute address.
     format BranchOp {
         18: b({{ NIA = CIA + disp; }},

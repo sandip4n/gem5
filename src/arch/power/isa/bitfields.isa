@@ -103,3 +103,6 @@ def bitfield L             <16>;
 
 //TO field for trap instructions
 def bitfield TO           <25:21>;
+
+//PCODE field for platform operations
+def bitfield PCODE        <19:0>;
