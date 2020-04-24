@@ -64,157 +64,14 @@
 using namespace std;
 using namespace PowerISA;
 
-long stdout_buf_length=0;
-long stdout_buf_addr=0;
-
 namespace PowerISA {
 
-SystemCallInterrupt::SystemCallInterrupt(){
-}
-void
-SystemCallInterrupt::invoke(ThreadContext * tc, const StaticInstPtr &inst =
-                       StaticInst::nullStaticInstPtr){
-
-      tc->setIntReg(INTREG_SRR0 , tc->instAddr() + 4);
-      PowerInterrupt::updateSRR1(tc);
-      PowerInterrupt::updateMsr(tc);
-      tc->pcState(SystemCallPCSet);
-      //std::printf("System call number = %lu\n", tc->readIntReg(0));
-      if (tc->readIntReg(0) == 4){
-        stdout_buf_length = (int)tc->readIntReg(5);
-        stdout_buf_addr = tc->readIntReg(4);
-     }
-}
 ///////////////////////////////////////////////////////////////////////
 //
 //  POWER TLB
 //
 
 #define MODE2MASK(X) (1 << (X))
-
-void
-TLB::initConsoleSnoop(void)
-{
-    int nameStart, addrLen;
-    string symName, symHexAddr;
-    ifstream in;
-    string line;
-
-    /* Find console snoop point for kernel */
-    in.open("dist/m5/system/binaries/objdump_vmlinux");
-    if (!in.is_open()) {
-        panic("Could not find kernel objdump");
-    }
-
-    while (getline(in, line)) {
-        /* Find ".log_store" and the first call to ".memcpy" inside it */
-        nameStart = line.find("<.log_store>:");
-
-        /* Sometimes, optimizations introduce ISRA symbols */
-        if (nameStart == string::npos) {
-            nameStart = line.find("<.log_store.isra.1>:");
-        }
-
-        if (nameStart != string::npos) {
-            while (getline(in, line)) {
-                if (line.find("<.memcpy>") != string::npos &&
-                    (*(line.rbegin())) != ':') {
-                    addrLen = line.find(":");
-                    istringstream hexconv(line.substr(0, addrLen));
-                    hexconv >> hex >> kernConsoleSnoopAddr;
-
-                    /* Use previous instruction and remove quadrant bits */
-                    kernConsoleSnoopAddr -= 4;
-                    kernConsoleSnoopAddr &= (-1ULL >> 2);
-                    break;
-                }
-            }
-        }
-    }
-
-    in.close();
-
-    if (!kernConsoleSnoopAddr) {
-        panic("Could not determine kernel console snooping address");
-    }
-
-    /* Find console snoop point for skiboot */
-    in.open("dist/m5/system/binaries/objdump_skiboot");
-    if (!in.is_open()) {
-        panic("Could not find skiboot objdump");
-    }
-
-    while (getline(in, line)) {
-        /* Find ".console_write" and the first call to ".write" inside it */
-        nameStart = line.find("<.console_write>:");
-
-        if (nameStart != string::npos) {
-            addrLen = line.find(":");
-            istringstream hexconv(line.substr(0, addrLen));
-            hexconv >> hex >> opalConsoleSnoopAddr;
-
-            /* Add OPAL load offset */
-            opalConsoleSnoopAddr += 0x30000000ULL;
-            break;
-        }
-    }
-
-    inform("Snooping kernel console at 0x%016lx", kernConsoleSnoopAddr);
-    inform("Snooping skiboot console at 0x%016lx", opalConsoleSnoopAddr);
-
-    in.close();
-    if (!opalConsoleSnoopAddr) {
-        panic("Could not determine skiboot console snooping address");
-    }
-}
-
-void
-TLB::trySnoopKernConsole(uint64_t paddr, ThreadContext *tc)
-{
-//    uint64_t addr;
-//    int len, i;
-//    char *buf;
-//
-//    if (paddr != kernConsoleSnoopAddr) {
-//        return;
-//    }
-//
-//    len = (int) tc->readIntReg(5);
-//    buf = new char[len + 1];
-//    addr = (uint64_t) tc->readIntReg(4) & (-1ULL >> 4);
-//
-//    for (i = 0; i < len; i++) {
-//        buf[i] = (char) rwalk->readPhysMem(addr + i, 8);
-//    }
-//
-//    buf[i] = '\0';
-//    printf("%lu [KERN LOG] %s\n", curTick(), buf);
-//    delete buf;
-}
-
-void
-TLB::trySnoopOpalConsole(uint64_t paddr, ThreadContext *tc)
-{
-//    uint64_t addr;
-//    int len, i;
-//    char *buf;
-//
-//    if (paddr != opalConsoleSnoopAddr) {
-//        return;
-//    }
-//
-//    len = (int) tc->readIntReg(5);
-//    buf = new char[len + 1];
-//    addr = (uint64_t) tc->readIntReg(4) & (-1ULL >> 4);
-//
-//    for (i = 0; i < len; i++) {
-//        buf[i] = (char) rwalk->readPhysMem(addr + i, 8);
-//    }
-//
-//    buf[i] = '\0';
-//    printf("%lu [OPAL LOG] %s\n", curTick(), buf);
-//    delete buf;
-}
 
 TLB::TLB(const Params *p)
     : BaseTLB(p), size(p->size), nlu(0)
@@ -223,7 +80,6 @@ TLB::TLB(const Params *p)
     memset(table, 0, sizeof(PowerISA::PTE[size]));
     smallPages = 0;
     rwalk = p->walker;
-    initConsoleSnoop();
 }
 
 TLB::~TLB()
@@ -477,59 +333,12 @@ TLB::translateAtomic(RequestPtr req, ThreadContext *tc, Mode mode)
     DPRINTF(TLB, "Translating vaddr %#x.\n", vaddr);
     vaddr &= 0x0fffffffffffffff;
     if (FullSystem){
-        if (stdout_buf_length){
-            RequestPtr ptr = new Request();
-            Msr msr = tc->readIntReg(INTREG_MSR);
-            msr.dr = 1;
-            tc->setIntReg(INTREG_MSR,msr);
-            ptr->setVirt(req->_asid,stdout_buf_addr,8,
-                         req->_flags,req->_masterId,req->_pc);
-            rwalk->start(tc,ptr,BaseTLB::Read);
-            char stdout_buf[stdout_buf_length + 1];
-            Addr stdout_paddr = ptr->getPaddr();
-            int i = 0;
-            char read;
-            for (i=0; i<stdout_buf_length; i++){
-                read =  (char)rwalk->readPhysMem(stdout_paddr + i, 8);
-               stdout_buf[i] = read;
-            }
-            stdout_buf[i] = '\0';
-            //DPRINTF(TLB, "[STDOUT LOG] %s",stdout_buf);
-            std::printf("%lu [STDOUT] %s",curTick(),stdout_buf);
-            std::fflush(stdout);
-            stdout_buf_length = 0;
-        }
         Msr msr = tc->readIntReg(INTREG_MSR);
         if (mode == Execute){
-                //0x20000000
-           /* if (vaddr == 0x30005214){
-                int fd = open("device_tree.dtb", O_CREAT | O_WRONLY,0644);
-                //uint64_t i;
-                int index = 0;
-                //uint64_t start_addr = (uint64_t)tc->readIntReg(3);
-                std::printf("r3(device tree start) 0x%016lx\n",
-                                tc->readIntReg(4));
-                uint64_t start_addr = (uint64_t)tc->readIntReg(4); //- 0x1000;
-                uint8_t buf[10745];
-                for (index=0; index<10745; index++){
-                    buf[index] = (uint8_t)rwalk->readPhysMem(
-                                        start_addr + index,8);
-                    if (index < 8){
-                            std::printf("buf[0x%016lx] = %02x\n",
-                            start_addr + index,(unsigned int)buf[index]);
-                    }
-                }
-                int len = write(fd,buf,10745);
-                std::printf("Written to the device_tree.dtb :: len %d\n",len);
-            }*/
             if (msr.ir){
                 //printf("MSR: %lx\n",(uint64_t)msr);
                 Fault fault = rwalk->start(tc,req, mode);
                 paddr = req->getPaddr();
-
-                trySnoopKernConsole(paddr, tc);
-                trySnoopOpalConsole(paddr, tc);
-
                 return fault;
             }
             else{
@@ -537,12 +346,7 @@ TLB::translateAtomic(RequestPtr req, ThreadContext *tc, Mode mode)
                 paddr = vaddr;
                 DPRINTF(TLB, "Translated %#x -> %#x.\n", vaddr, paddr);
                 req->setPaddr(paddr);
-
-                trySnoopKernConsole(paddr, tc);
-                trySnoopOpalConsole(paddr, tc);
-
                 return NoFault;
-
             }
         }
         else{

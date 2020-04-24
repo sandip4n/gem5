@@ -12,19 +12,13 @@ G500::G500(const Params *p)
 void
 G500::postConsoleInt()
 {
-    //warn_once("Don't know what interrupt to post for console.\n");
-    cout<<"Post console intr\n";
     this->intrctrl->post(2,0);
-    //panic("Need implementation\n");
 }
 
 void
 G500::clearConsoleInt()
 {
-    //warn_once("Don't know what interrupt to clear for console.\n");
-    //cout<<"Clear console intr\n";
     this->intrctrl->clear(2,0);
-    //panic("Need implementation\n");
 }
 
 void

@@ -163,7 +163,6 @@ class DirectExternalInterrupt : public PowerInterrupt
     virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
                         StaticInst::nullStaticInstPtr)
     {
-      printf("Direct External Interrupt invoked\n");
       // Refer Power ISA Manual v3.0B Book-III, section 6.5.7.1
       Lpcr lpcr = tc->readIntReg(INTREG_LPCR);
 
@@ -319,21 +318,18 @@ class ProgramPriInterrupt : public ProgramInterrupt
 class SystemCallInterrupt : public PowerInterrupt
 {
   public:
-    SystemCallInterrupt();
-    virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst);
-    /* SystemCallInterrupt()
+    SystemCallInterrupt()
     {
     }
     virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
-                       StaticInst::nullStaticInstPtr)
+                        StaticInst::nullStaticInstPtr)
     {
-      //TODO: Right now it not handle case when LEV=0.
-      tc->setIntReg(INTREG_SRR0 , tc->instAddr() + 4);
-      PowerInterrupt::updateSRR1(tc);
-      PowerInterrupt::updateMsr(tc);
-      tc->pcState(SystemCallPCSet);
+        /* TODO: Handle case when LEV = 0 */
+        tc->setIntReg(INTREG_SRR0 , tc->instAddr() + 4);
+        PowerInterrupt::updateSRR1(tc);
+        PowerInterrupt::updateMsr(tc);
+        tc->pcState(SystemCallPCSet);
     }
-    */
 };
 
 class DecrementerInterrupt : public PowerInterrupt

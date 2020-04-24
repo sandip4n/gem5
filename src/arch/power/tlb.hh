@@ -181,14 +181,6 @@ class TLB : public BaseTLB
 
     void regStats() override;
     BaseMasterPort *getMasterPort() override;
-
-  private:
-    uint64_t kernConsoleSnoopAddr;
-    uint64_t opalConsoleSnoopAddr;
-
-    void initConsoleSnoop();
-    void trySnoopKernConsole(uint64_t paddr, ThreadContext *tc);
-    void trySnoopOpalConsole(uint64_t paddr, ThreadContext *tc);
 };
 
 } // namespace PowerISA
