@@ -276,8 +276,7 @@ Terminal::readData()
 
     DPRINTF(TerminalVerbose, "in: \'%c\' %#02x more: %d\n",
             isprint(c) ? c : ' ', c, !rxbuf.empty());
-    //printf("------Read: \'%c\' %#02x more: %d\n",
-    //        isprint(c) ? c : ' ', c, !rxbuf.empty());
+
     return c;
 }
 
@@ -295,7 +294,7 @@ Terminal::console_in()
     }
 
     DPRINTF(TerminalVerbose, "console_in: return: %#x\n", value);
-    //printf("console_in: return: 0x%lx\n", value);
+
     return value;
 }
 
@@ -330,9 +329,6 @@ Terminal::writeData(uint8_t c)
 
     if (outfile)
         outfile->stream()->put((char)c);
-
-    //printf("-------Written out: \'%c\' %#02x\n",
-    //        isprint(c) ? c : ' ', (int)c);
 
     DPRINTF(TerminalVerbose, "out: \'%c\' %#02x\n",
             isprint(c) ? c : ' ', (int)c);
