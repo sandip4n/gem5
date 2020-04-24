@@ -78,7 +78,9 @@ RadixWalk::readPhysMem(uint64_t addr, uint64_t dataSize)
     this->port.sendAtomic(read);
     ret = read->get<uint64_t>();
 
+    read->deleteData();
     delete read->req;
+    delete read;
 
     return ret;
 }
@@ -95,7 +97,9 @@ RadixWalk::writePhysMem(uint64_t addr, uint64_t dataSize)
     this->port.sendAtomic(write);
     ret = write->get<uint64_t>();
 
+    write->deleteData();
     delete write->req;
+    delete write;
 
     return ret;
 }
