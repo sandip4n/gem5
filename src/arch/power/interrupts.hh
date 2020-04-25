@@ -34,6 +34,7 @@
 #include "arch/power/faults.hh"
 #include "arch/power/registers.hh"
 #include "base/logging.hh"
+#include "debug/Interrupt.hh"
 #include "params/PowerInterrupts.hh"
 #include "sim/sim_object.hh"
 
@@ -84,78 +85,75 @@ class Interrupts : public SimObject
     void
     post(int int_num, int index)
     {
-       DPRINTF(Interrupt, "Interrupt %d: posted\n", int_num);
-       if (int_num < 0 || int_num >= NumInterruptLevels)
-         panic("int_num out of bounds for fun POST%d\n",int_num);
-       interrupts[int_num] = 1;
+        DPRINTF(Interrupt, "Interrupt %d: posted\n", int_num);
+        if (int_num < 0 || int_num >= NumInterruptLevels)
+            panic("int_num out of bounds for fun POST%d\n",int_num);
+        interrupts[int_num] = 1;
     }
 
     void
     clear(int int_num, int index)
     {
-       DPRINTF(Interrupt, "Interrupt %d:\n", int_num);
-       if (int_num < 0 || int_num >= NumInterruptLevels)
-         panic("int_num out of bounds for fun CLEAR%d\n",int_num);
-       interrupts[int_num] = 0;
+        DPRINTF(Interrupt, "Interrupt %d:\n", int_num);
+        if (int_num < 0 || int_num >= NumInterruptLevels)
+            panic("int_num out of bounds for fun CLEAR%d\n",int_num);
+        interrupts[int_num] = 0;
     }
 
     void
     clearAll()
     {
-       memset(interrupts, 0, sizeof(interrupts));
+        memset(interrupts, 0, sizeof(interrupts));
     }
 
     bool
     checkInterrupts(ThreadContext *tc)
     {
-       Msr msr = tc->readIntReg(INTREG_MSR);
-       tc->setIntReg(INTREG_TB , tc->readIntReg(INTREG_TB)+1);
-       if (tc->readIntReg(INTREG_DEC) != 0)
-         tc->setIntReg(INTREG_DEC , tc->readIntReg(INTREG_DEC)-1);
-       else
-         interrupts[Decrementer] = 1;
-       if (msr.ee)
-       {
-         if (interrupts[2] == 1)
-           return true;
-         for (int i = 0; i < NumInterruptLevels; i++) {
-             if (interrupts[i] == 1)
-               return true;
-         }
-       }
-       if (interrupts[DirHypDoorbell] && (!msr.hv || msr.pr))
-         return true;
-       return false;
+        Msr msr = tc->readIntReg(INTREG_MSR);
+        tc->setIntReg(INTREG_TB, tc->readIntReg(INTREG_TB) + 1);
+        if (tc->readIntReg(INTREG_DEC) != 0)
+            tc->setIntReg(INTREG_DEC, tc->readIntReg(INTREG_DEC) - 1);
+        else
+            interrupts[Decrementer] = 1;
+        if (msr.ee) {
+            if (interrupts[2] == 1)
+                return true;
+            for (int i = 0; i < NumInterruptLevels; i++) {
+                if (interrupts[i] == 1)
+                    return true;
+            }
+        }
+        if (interrupts[DirHypDoorbell] && (!msr.hv || msr.pr))
+            return true;
+        return false;
     }
 
     Fault
     getInterrupt(ThreadContext *tc)
     {
         assert(checkInterrupts(tc));
+
         if (interrupts[Decrementer]) {
             clear(Decrementer,0);
             return std::make_shared<DecrementerInterrupt>();
-        }
-        else if (interrupts[DirPriDoorbell]) {
+        } else if (interrupts[DirPriDoorbell]) {
             clear(DirPriDoorbell,0);
             return std::make_shared<PriDoorbellInterrupt>();
-        }
-        else if (interrupts[DirHypDoorbell]) {
+        } else if (interrupts[DirHypDoorbell]) {
             clear(DirHypDoorbell,0);
             return std::make_shared<HypDoorbellInterrupt>();
-        }
-        else if (interrupts[DirectExt]){
+        } else if (interrupts[DirectExt]) {
             clear(DirectExt,0);
             return std::make_shared<DirectExternalInterrupt>();
+        } else {
+            return NoFault;
         }
-
-        else return NoFault;
     }
 
     void
     updateIntrInfo(ThreadContext *tc)
     {
-        tc->setIntReg(INTREG_DEC , 0xffffffffffffffff);
+        tc->setIntReg(INTREG_DEC, UINT64_MAX);
     }
 };
 
