@@ -706,7 +706,7 @@ def makeLinuxPowerSystem(mem_mode, numCPUs=1, mdesc=None, cmdline=None):
     self.system_port = self.membus.slave
     self.intrctrl = IntrControl()
     if not cmdline:
-        cmdline = 'earlyprintk=ttyS0 console=ttyS0 irqpoll lpj=1000000000'
+        cmdline = 'earlyprintk=ttyS0 console=ttyS0 irqpoll'
     self.boot_osflags = fillInCmdline(mdesc, cmdline)
     #self.kernel = binary('vmlinux')
     self.skiboot = binary('skiboot.elf');

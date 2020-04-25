@@ -211,7 +211,6 @@ class HypDoorbellInterrupt : public PowerInterrupt
     virtual void invoke(ThreadContext * tc, const StaticInstPtr &inst =
                        StaticInst::nullStaticInstPtr)
     {
-      printf("In Hypervisor interrupt\n");
       tc->setIntReg(INTREG_HSRR0 , tc->instAddr());
       PowerInterrupt::updateHSRR1(tc);
       PowerInterrupt::updateMsr(tc);

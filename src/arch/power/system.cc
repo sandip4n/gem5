@@ -66,32 +66,29 @@ void
 PowerSystem::initState()
 {
     System::initState();
-    printf("PowerSystem::initState: No of thread contexts %d\n" ,
-                    (int)threadContexts.size());
 
-    ThreadContext *tc = threadContexts[0];
-    //tc->pcState(tc->getSystemPtr()->kernelEntry);
-    tc->pcState(0x10); // For skiboot
-    //Sixty Four, little endian,Hypervisor bits are enabled.
-    // IR and DR bits are disabled.
-    Msr msr = 0x9000000000000001;
-    tc->setIntReg(INTREG_DEC , 0xffffffffffffffff);
-    // This PVR is specific to power9
-    // Setting TB register to 0
-    tc->setIntReg(INTREG_TB , 0x0);
-    //tc->setIntReg(INTREG_PVR , 0x004e1100);
-    tc->setIntReg(INTREG_PVR , 0x004e0200);
-    tc->setIntReg(INTREG_MSR , msr);
-    //ArgumentReg0 is initialized with 0xc00000 because in linux/system.cc
-    //dtb is loaded at 0xc00000
-    tc->setIntReg(ArgumentReg0, 0x1800000);
-    ThreadID tid = 1;
-    ThreadContext *tc1 = threadContexts[tid];
-    tc1->pcState(0x10);
-    tc1->setIntReg(INTREG_PVR , 0x004e0200);
-    tc1->setIntReg(INTREG_MSR , msr);
-    tc1->setIntReg(ArgumentReg0, 0x1800000);
-    //tc1->pcState(0xc00000000000a840);
-    //tc1->setIntReg(ArgumentReg0, 0x1);
-    tc1->setIntReg(INTREG_PIR,0x1);
+    for (int i = 0; i < threadContexts.size(); i++) {
+        ThreadContext *tc = threadContexts[i];
+        // Entry Point of Skiboot
+        // Using known address instead of tc->getSystemPtr()->kernelEntry
+        tc->pcState(0x10);
+
+        // Set Decrementer and Timebase
+        tc->setIntReg(INTREG_DEC, 0x0);
+        tc->setIntReg(INTREG_TB, 0x0);
+
+        // Set Processor Version corresponding to POWER9
+        tc->setIntReg(INTREG_PVR, 0x004e0200);
+
+        // 64-bit, big-endian hypervisor real mode
+        // SF and HV are set, IR and DR bits are not
+        tc->setIntReg(INTREG_MSR, 0x9000000000000000);
+
+        // Device Tree is loaded at 0x1800000 and this address
+        // is passed as an argument to skiboot
+        tc->setIntReg(ArgumentReg0, 0x1800000);
+
+        // Processor Identification
+        tc->setIntReg(INTREG_PIR, i);
+    }
 }

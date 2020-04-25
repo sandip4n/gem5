@@ -341,7 +341,6 @@ decode PO default Unknown::unknown() {
             if(FullSystem) {
               int64_t val1 = Ra_sd;
               int64_t val2 = simm;
-              //printf("Val 1 : 0x%016lx val2: 0x%016lx\n", val,val2);
               if(((TO & 0x10) && (val1 < val2))                    ||
                 ((TO & 0x08) && (val1 > val2))                     ||
                 ((TO & 0x04) && (val1 == val2))                    ||
@@ -1009,7 +1008,6 @@ decode PO default Unknown::unknown() {
                 ThreadContext *tc = xc->tcBase();
                 ThreadID t = tc->threadId();
                 if(bits(Rb_ud, 31, 27) == 0x5) {
-                  printf("Get msgclr instr for threadid %d\n",(int)t);
                   tc->getCpuPtr()->clearInterrupt(t, 7, 0);
                 }
                 }});
@@ -1018,34 +1016,22 @@ decode PO default Unknown::unknown() {
 
             206: msgsnd({{
                 if(bits(Rb_ud, 31, 27) == 0x5) {
-                  ThreadContext *tc = xc->tcBase();
+                    ThreadContext *tc = xc->tcBase();
 
-                  //Check for all threads in that processor
-                  //to generate Doorbell Interrupt.
-
-                  for(ThreadID i = 0; i < tc->getCpuPtr()->numContexts();
-                            i++) {
-                    if(i != tc->threadId())
-                    {
-
-                    ThreadContext *t = tc->getCpuPtr()->getContext(i);
-                    printf("Read register PIR value %d Thread Id %d\n",
-                        (int)t->readIntReg(INTREG_PIR),(int)i);
-                    uint32_t val1 = t->readIntReg(INTREG_PIR);
-                    printf("Read second register\n");
-                    printf("Read register Rb_ud value 0x%016lxThread Id %d\n",
-                            Rb_ud,(int)tc->threadId());
-                    uint64_t val2 = Rb_ud;
-                     printf("Reading done");
-                     printf("Msr value is 0x%016lx\n", MSR);
-                    if(bits(val1, 19, 0) == bits(val2, 19, 0)){
-                      printf("Intterupt Happen\n");
-                      t->getCpuPtr()->postInterrupt(i, 7, 0);
-                  }
-                   }
+                    // Check for all threads in that processor
+                    // to generate Doorbell Interrupt.
+                    for (int i = 0; i < tc->getCpuPtr()->numContexts(); i++) {
+                        if (i != tc->threadId()) {
+                            ThreadContext *t = tc->getCpuPtr()->getContext(i);
+                            uint32_t val1 = t->readIntReg(INTREG_PIR);
+                            uint64_t val2 = Rb_ud;
+                            if (bits(val1, 19, 0) == bits(val2, 19, 0)) {
+                                t->getCpuPtr()->postInterrupt(i, 7, 0);
+                            }
+                        }
+                    }
                 }
-                }
-                }});
+            }});
 
             174: msgclrp({{
                 ThreadContext *tc = xc->tcBase();
