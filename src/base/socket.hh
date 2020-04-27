@@ -60,4 +60,6 @@ class ListenSocket
     bool islistening() const { return listening; }
 };
 
+extern int global_socket_fd;
+
 #endif //__SOCKET_HH__

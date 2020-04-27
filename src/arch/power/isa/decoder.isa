@@ -55,7 +55,8 @@ decode PO default Unknown::unknown() {
                             char ch;
                             fault = readMemAtomic(xc, NULL, arg1 + i, ch, 0);
                             if (fault == NoFault)
-                                putchar(ch);
+                                atomic_write(global_socket_fd, (char *)&ch,
+                                             sizeof((char *)&ch));
                         }
                         break;
                     case 1: /* SIM_EXIT_CODE */
