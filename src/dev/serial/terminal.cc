@@ -66,6 +66,7 @@
 
 using namespace std;
 
+int global_socket_fd;
 
 /*
  * Poll event for the listen socket
@@ -175,6 +176,7 @@ Terminal::accept()
     }
 
     data_fd = fd;
+    global_socket_fd = fd;
     dataEvent = new DataEvent(this, data_fd, POLLIN);
     pollQueue.schedule(dataEvent);
 
