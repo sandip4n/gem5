@@ -729,7 +729,7 @@ IntRotateOp::generateDisassembly(
     }
 
     // Print the shift, mask begin and mask end
-    ss << ", " << sh << ", " << mb << ", " << me;
+    ss << ", " << sh << ", " << maskBeg << ", " << maskEnd;
 
     return ss.str();
 }
