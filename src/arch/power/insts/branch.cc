@@ -27,6 +27,8 @@
  */
 
 #include "arch/power/insts/branch.hh"
+#include "arch/power/regs/int.hh"
+#include "arch/power/regs/misc.hh"
 
 #include "base/loader/symtab.hh"
 #include "cpu/thread_context.hh"
@@ -51,12 +53,17 @@ PCDependentDisassembly::disassemble(
 
 
 PowerISA::PCState
-BranchOp::branchTarget(const PowerISA::PCState &pc) const
+BranchOp::branchTarget(ThreadContext *tc) const
 {
+    Msr msr = tc->readIntReg(INTREG_MSR);
+    Addr addr;
+
     if (aa)
-        return li;
+        addr = li;
     else
-        return pc.pc() + li;
+        addr = tc->pcState().pc() + li;
+
+    return msr.sf ? addr : addr & UINT32_MAX;
 }
 
 
@@ -94,13 +101,17 @@ BranchOp::generateDisassembly(
 
 
 PowerISA::PCState
-BranchDispCondOp::branchTarget(const PowerISA::PCState &pc) const
+BranchDispCondOp::branchTarget(ThreadContext *tc) const
 {
-    if (aa) {
-        return bd;
-    } else {
-        return pc.pc() + bd;
-    }
+    Msr msr = tc->readIntReg(INTREG_MSR);
+    Addr addr;
+
+    if (aa)
+        addr = bd;
+    else
+        addr = tc->pcState().pc() + bd;
+
+    return msr.sf ? addr : addr & UINT32_MAX;
 }
 
 
@@ -143,8 +154,9 @@ BranchDispCondOp::generateDisassembly(
 PowerISA::PCState
 BranchRegCondOp::branchTarget(ThreadContext *tc) const
 {
-    Addr addr = tc->readIntReg(srcRegIdx(_numSrcRegs - 1).index());
-    return addr & -4ULL;
+    Msr msr = tc->readIntReg(INTREG_MSR);
+    Addr addr = tc->readIntReg(srcRegIdx(_numSrcRegs - 1).index()) & -4ULL;
+    return msr.sf ? addr : addr & UINT32_MAX;
 }
 
 
