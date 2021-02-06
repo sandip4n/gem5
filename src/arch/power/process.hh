@@ -45,7 +45,8 @@ class PowerProcess : public Process
   public:
     PowerProcess(const ProcessParams &params, ::Loader::ObjectFile *objFile);
 
-    void argsInit(int intSize, int pageSize);
+    template <typename IntType>
+    void argsInit(int pageSize);
 };
 
 #endif // __POWER_PROCESS_HH__
