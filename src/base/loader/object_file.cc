@@ -63,6 +63,8 @@ archToString(Arch arch)
         return "thumb";
       case Power:
         return "power";
+      case Power64:
+        return "power64";
       case Riscv64:
         return "riscv64";
       case Riscv32:
@@ -81,6 +83,8 @@ opSysToString(OpSys op_sys)
       case Tru64:
         return "tru64";
       case Linux:
+      case LinuxPower64ABIv1:
+      case LinuxPower64ABIv2:
         return "linux";
       case Solaris:
         return "solaris";
