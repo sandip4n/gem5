@@ -91,16 +91,7 @@ IntImmOp::generateDisassembly(Addr pc, const Loader::SymbolTable *symtab) const
 {
     std::stringstream ss;
 
-    // Generate the correct mnemonic
-    std::string myMnemonic(mnemonic);
-
-    // Special cases
-    if (!myMnemonic.compare("addi") && _numSrcRegs == 0) {
-        myMnemonic = "li";
-    } else if (!myMnemonic.compare("addis") && _numSrcRegs == 0) {
-        myMnemonic = "lis";
-    }
-    ccprintf(ss, "%-10s ", myMnemonic);
+    ccprintf(ss, "%-10s ", mnemonic);
 
     // Print the first destination only
     if (_numDestRegs > 0) {
@@ -117,6 +108,116 @@ IntImmOp::generateDisassembly(Addr pc, const Loader::SymbolTable *symtab) const
 
     // Print the immediate value last
     ss << ", " << (int32_t)imm;
+
+    return ss.str();
+}
+
+
+std::string
+IntArithOp::generateDisassembly(
+        Addr pc, const Loader::SymbolTable *symtab) const
+{
+    std::stringstream ss;
+    bool printSecondSrc = true;
+
+    // Generate the correct mnemonic
+    std::string myMnemonic(mnemonic);
+
+    // Special cases
+    if (!myMnemonic.compare("addme") ||
+        !myMnemonic.compare("addze") ||
+        !myMnemonic.compare("subfme") ||
+        !myMnemonic.compare("subfze") ||
+        !myMnemonic.compare("neg")){
+        printSecondSrc = false;
+    }
+
+    // Additional characters depending on isa bits being set
+    if (oeSet) myMnemonic = myMnemonic + "o";
+    if (rcSet) myMnemonic = myMnemonic + ".";
+    ccprintf(ss, "%-10s ", myMnemonic);
+
+    // Print the first destination only
+    if (_numDestRegs > 0) {
+        printReg(ss, destRegIdx(0));
+    }
+
+    // Print the first source register
+    if (_numSrcRegs > 0) {
+        if (_numDestRegs > 0) {
+            ss << ", ";
+        }
+        printReg(ss, srcRegIdx(0));
+
+        // Print the second source register
+        if (_numSrcRegs > 1 && printSecondSrc) {
+            ss << ", ";
+            printReg(ss, srcRegIdx(1));
+        }
+    }
+
+    return ss.str();
+}
+
+
+std::string
+IntImmArithOp::generateDisassembly(
+        Addr pc, const Loader::SymbolTable *symtab) const
+{
+    std::stringstream ss;
+    bool negateSimm = false;
+
+    // Generate the correct mnemonic
+    std::string myMnemonic(mnemonic);
+
+    // Special cases
+    if (!myMnemonic.compare("addi")) {
+        if (_numSrcRegs == 0) {
+            myMnemonic = "li";
+        } else if (simm < 0) {
+            myMnemonic = "subi";
+            negateSimm = true;
+        }
+    } else if (!myMnemonic.compare("addis")) {
+        if (_numSrcRegs == 0) {
+            myMnemonic = "lis";
+        } else if (simm < 0) {
+            myMnemonic = "subis";
+            negateSimm = true;
+        }
+    } else if (!myMnemonic.compare("addic") && simm < 0) {
+        myMnemonic = "subic";
+        negateSimm = true;
+    } else if (!myMnemonic.compare("addic_")) {
+        if (simm < 0) {
+            myMnemonic = "subic.";
+            negateSimm = true;
+        } else {
+            myMnemonic = "addic.";
+        }
+    }
+
+    ccprintf(ss, "%-10s ", myMnemonic);
+
+    // Print the first destination only
+    if (_numDestRegs > 0) {
+        printReg(ss, destRegIdx(0));
+    }
+
+    // Print the source register
+    if (_numSrcRegs > 0) {
+        if (_numDestRegs > 0) {
+            ss << ", ";
+        }
+        printReg(ss, srcRegIdx(0));
+    }
+
+    // Print the immediate value
+    if (negateSimm) {
+        ss << ", " << -simm;
+    } else {
+        ss << ", " << simm;
+    }
 
     return ss.str();
 }
