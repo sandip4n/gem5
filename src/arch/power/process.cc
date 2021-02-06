@@ -76,7 +76,55 @@ PowerProcess::initState()
 {
     Process::initState();
 
-    argsInit<uint32_t>(PageBytes);
+    if (objFile->getArch() == ::Loader::Power)
+        argsInit<uint32_t>(PageBytes);
+    else
+        argsInit<uint64_t>(PageBytes);
+
+    // Fix up entry point and symbol table for 64-bit ELF ABI v1
+    if (objFile->getOpSys() != ::Loader::LinuxPower64ABIv1)
+        return;
+
+    // Fix entry point address and the base TOC pointer by looking the
+    // the function descriptor in the .opd section
+    Addr entryPoint, tocBase;
+    ByteOrder byteOrder = objFile->getByteOrder();
+    ThreadContext *tc = system->threads[contextIds[0]];
+
+    // The first doubleword of the descriptor contains the address of the
+    // entry point of the function
+    initVirtMem->readBlob(getStartPC(), &entryPoint, sizeof(Addr));
+
+    // Update the PC state
+    auto pc = tc->pcState();
+    pc.byteOrder(byteOrder);
+    pc.set(gtoh(entryPoint, byteOrder));
+    tc->pcState(pc);
+
+    // The second doubleword of the descriptor contains the TOC base
+    // address for the function
+    initVirtMem->readBlob(getStartPC() + 8, &tocBase, sizeof(Addr));
+    tc->setIntReg(TOCPointerReg, gtoh(tocBase, byteOrder));
+
+    // Fix symbol table entries as they would otherwise point to the
+    // function descriptor rather than the actual entry point address
+    auto *symbolTable = new ::Loader::SymbolTable;
+
+    for (auto sym : ::Loader::debugSymbolTable) {
+        Addr entry;
+        ::Loader::Symbol symbol = sym;
+
+        // Try to read entry point from function descriptor
+        if (initVirtMem->tryReadBlob(sym.address, &entry, sizeof(Addr)))
+            symbol.address = gtoh(entry, byteOrder);
+
+        symbolTable->insert(symbol);
+    }
+
+    // Replace the current debug symbol table
+    ::Loader::debugSymbolTable.clear();
+    ::Loader::debugSymbolTable.insert(*symbolTable);
+    delete symbolTable;
 }
 
 template <typename IntType>
@@ -85,6 +133,8 @@ PowerProcess::argsInit(int pageSize)
 {
     int intSize = sizeof(IntType);
     ByteOrder byteOrder = objFile->getByteOrder();
+    bool is64bit = (objFile->getArch() == ::Loader::Power64);
+    bool isLittleEndian = (byteOrder == ByteOrder::little);
     std::vector<AuxVector<IntType>> auxv;
 
     std::string filename;
@@ -104,13 +154,21 @@ PowerProcess::argsInit(int pageSize)
     //Auxilliary vectors are loaded only for elf formatted executables.
     auto *elfObject = dynamic_cast<::Loader::ElfObject *>(objFile);
     if (elfObject) {
-        IntType features = 0;
+        IntType features = PPC_FEATURE_32;
+
+        // Check if running in 64-bit mode
+        if (is64bit)
+            features |= PPC_FEATURE_64;
+
+        // Check if running in little endian mode
+        if (isLittleEndian)
+            features |= PPC_FEATURE_PPC_LE | PPC_FEATURE_TRUE_LE;
 
         //Bits which describe the system hardware capabilities
         //XXX Figure out what these should be
         auxv.emplace_back(M5_AT_HWCAP, features);
         //The system page size
-        auxv.emplace_back(M5_AT_PAGESZ, PowerISA::PageBytes);
+        auxv.emplace_back(M5_AT_PAGESZ, pageSize);
         //Frequency at which times() increments
         auxv.emplace_back(M5_AT_CLKTCK, 0x64);
         // For statically linked executables, this is the virtual address of
@@ -276,7 +334,7 @@ PowerProcess::argsInit(int pageSize)
 
     //Set the machine status for a typical userspace
     Msr msr = 0;
-    msr.sf = (intSize == 8);
+    msr.sf = is64bit;
     msr.hv = 1;
     msr.ee = 1;
     msr.pr = 1;
@@ -284,10 +342,13 @@ PowerProcess::argsInit(int pageSize)
     msr.ir = 1;
     msr.dr = 1;
     msr.ri = 1;
-    msr.le = (byteOrder == ByteOrder::little);
+    msr.le = isLittleEndian;
     tc->setMiscReg(MISCREG_MSR, msr);
 
-    tc->pcState(getStartPC());
+    auto pc = tc->pcState();
+    pc.set(getStartPC());
+    pc.byteOrder(byteOrder);
+    tc->pcState(pc);
 
     //Align the "stack_min" to a page boundary.
     memState->setStackMin(roundDown(stack_min, pageSize));

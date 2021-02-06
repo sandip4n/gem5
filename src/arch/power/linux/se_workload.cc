@@ -47,7 +47,9 @@ class LinuxLoader : public Process::Loader
     Process *
     load(const ProcessParams &params, ::Loader::ObjectFile *obj) override
     {
-        if (obj->getArch() != ::Loader::Power)
+        auto arch = obj->getArch();
+
+        if (arch != ::Loader::Power && arch != ::Loader::Power64)
             return nullptr;
 
         auto opsys = obj->getOpSys();
@@ -57,7 +59,10 @@ class LinuxLoader : public Process::Loader
             opsys = ::Loader::Linux;
         }
 
-        if (opsys != ::Loader::Linux)
+        if ((arch == ::Loader::Power && opsys != ::Loader::Linux) ||
+            (arch == ::Loader::Power64 &&
+             opsys != ::Loader::LinuxPower64ABIv1 &&
+             opsys != ::Loader::LinuxPower64ABIv2))
             return nullptr;
 
         return new PowerProcess(params, obj);
