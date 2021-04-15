@@ -90,6 +90,12 @@ struct TlbEntry
     }
 };
 
+struct Data {
+    ThreadContext *tc;
+    Addr vAddr;
+    Addr pAddr;
+};
+
 class TLB : public BaseTLB
 {
   protected:
@@ -99,6 +105,9 @@ class TLB : public BaseTLB
     PowerISA::PTE *table;       // the Page Table
     int size;                   // TLB Size
     int nlu;                    // not last used entry (for replacement)
+
+    struct Data* hashtable;
+    int tableSize;
 
     void
     nextnlu()
@@ -110,8 +119,11 @@ class TLB : public BaseTLB
 
     PowerISA::PTE *lookup(Addr vpn, uint8_t asn) const;
 
+    Data* lookupAtHash(Addr vAddr);
+
   public:
     typedef PowerTLBParams Params;
+    TLB(const Params *p);
     TLB(const Params &p);
     virtual ~TLB();
 
@@ -129,7 +141,7 @@ class TLB : public BaseTLB
     }
 
     PowerISA::PTE &index(bool advance = true);
-    void insert(Addr vaddr, PowerISA::PTE &pte);
+    void insert(Addr vAddr, Addr pAddr, ThreadContext *tc);
     void insertAt(PowerISA::PTE &pte, unsigned Index, int _smallPages);
     void flushAll() override;
 
