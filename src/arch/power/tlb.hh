@@ -90,6 +90,12 @@ struct TlbEntry
     }
 };
 
+struct Data {
+    ThreadContext *tc;
+    Addr vAddr;
+    Addr pAddr;
+};
+
 class TLB : public BaseTLB
 {
   protected:
@@ -100,6 +106,9 @@ class TLB : public BaseTLB
     int size;                   // TLB Size
     int nlu;                    // not last used entry (for replacement)
 
+	struct Data* hashtable;
+    int tableSize;
+
     void
     nextnlu()
     {
@@ -109,10 +118,11 @@ class TLB : public BaseTLB
     }
 
     PowerISA::PTE *lookup(Addr vpn, uint8_t asn) const;
+    Data* lookupAtHash(Addr vAddr);
 
   public:
     typedef PowerTLBParams Params;
-    TLB(const Params &p);
+    TLB(const Params *p);
     virtual ~TLB();
 
     void takeOverFrom(BaseTLB *otlb) override {}
