@@ -30,6 +30,7 @@
 #ifndef __ARCH_POWER_LINUX_LINUX_HH__
 #define __ARCH_POWER_LINUX_LINUX_HH__
 
+#include "arch/power/utility.hh"
 #include "kern/linux/linux.hh"
 
 /*
@@ -209,6 +210,20 @@ class PowerLinux : public Linux
             return true;
           default:
             return false;
+        }
+    }
+
+    static void
+    archClone(uint64_t flags,
+              Process *pp, Process *cp,
+              ThreadContext *ptc, ThreadContext *ctc,
+              uint64_t stack, uint64_t tls)
+    {
+        PowerISA::copyRegs(ptc, ctc);
+        if (flags & TGT_CLONE_SETTLS) {
+            /* TPIDR_EL0 is architecturally mapped to TPIDRURW, so
+             * this works for both aarch32 and aarch64. */
+            ctc->setMiscReg(13, tls);
         }
     }
 };
