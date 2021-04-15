@@ -50,6 +50,8 @@ void copyRegs(ThreadContext *src, ThreadContext *dest);
 static inline void
 copyMiscRegs(ThreadContext *src, ThreadContext *dest)
 {
+    for (int i = 0; i < NUM_MISCREGS; ++i)
+        dest->setMiscReg(i, src->readMiscReg(i));
 }
 
 inline void

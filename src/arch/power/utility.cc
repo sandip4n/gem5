@@ -48,8 +48,14 @@ copyRegs(ThreadContext *src, ThreadContext *dest)
     // Would need to add condition-code regs if implemented
     assert(NumCCRegs == 0);
 
+    for (int i = 0; i < NumCCRegs; ++i)
+        dest->setCCReg(i, src->readCCReg(i));
+
+    for (int i = 0; i < NUM_MISCREGS; ++i)
+        dest->setMiscReg(i, src->readMiscReg(i));
+
     // Copy misc. registers
-    copyMiscRegs(src, dest);
+    // copyMiscRegs(src, dest);
 
     // Lastly copy PC/NPC
     dest->pcState(src->pcState());
