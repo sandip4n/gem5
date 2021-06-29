@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2003-2005 The Regents of The University of Michigan
- * Copyright (c) 2009 The University of Edinburgh
+ * Copyright (c) 2021 IBM Corporation
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,67 +26,28 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __ARCH_POWER_FAULTS_HH__
-#define __ARCH_POWER_FAULTS_HH__
+#include "arch/power/faults.hh"
 
-#include "sim/faults.hh"
+#include <csignal>
+
+#include "cpu/base.hh"
+#include "cpu/thread_context.hh"
 
 namespace PowerISA
 {
 
-class PowerFault : public FaultBase
+void
+UnimplementedOpcodeFault::invoke(ThreadContext *tc, const StaticInstPtr &inst)
 {
-  protected:
-    FaultName _name;
+    tc->getSystemPtr()->trapToGdb(SIGILL, tc->contextId());
+    panic("unimplemented opcode at virtual address %#x\n", tc->pcState().pc());
+}
 
-    PowerFault(FaultName name)
-        : _name(name)
-    {
-    }
-
-    FaultName
-    name() const
-    {
-        return _name;
-    }
-};
-
-
-class UnimplementedOpcodeFault : public PowerFault
+void
+TrapFault::invoke(ThreadContext *tc, const StaticInstPtr &inst)
 {
-  public:
-    UnimplementedOpcodeFault()
-        : PowerFault("Unimplemented Opcode")
-    {
-    }
-
-    void invoke(ThreadContext *tc, const StaticInstPtr &inst =
-                nullStaticInstPtr) override;
-};
-
-
-class MachineCheckFault : public PowerFault
-{
-  public:
-    MachineCheckFault()
-        : PowerFault("Machine Check")
-    {
-    }
-};
-
-
-class TrapFault : public PowerFault
-{
-  public:
-    TrapFault()
-        : PowerFault("Trap")
-    {
-    }
-
-    void invoke(ThreadContext *tc, const StaticInstPtr &inst =
-                nullStaticInstPtr) override;
-};
+    tc->getSystemPtr()->trapToGdb(SIGTRAP, tc->contextId());
+    panic("trap at virtual address %#x\n", tc->pcState().pc());
+}
 
 } // namespace PowerISA
-
-#endif // __ARCH_POWER_FAULTS_HH__
